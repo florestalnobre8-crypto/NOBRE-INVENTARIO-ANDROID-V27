@@ -10,6 +10,11 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.view.Surface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.GeolocationPermissions;
@@ -34,6 +39,52 @@ public class MainActivity extends Activity {
     private boolean nativeGpsContinuous = false;
     private boolean pendingNativeGps = false;
 
+    private SensorManager sensorManager;
+    private Sensor headingSensor;
+    private float lastHeadingDeg = Float.NaN;
+
+    private final SensorEventListener headingListener = new SensorEventListener() {
+        @Override public void onSensorChanged(SensorEvent event) {
+            if (event == null || event.values == null || webView == null) return;
+            float[] rotationMatrix = new float[9];
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            float[] adjusted = new float[9];
+            boolean remapped;
+            switch (rotation) {
+                case Surface.ROTATION_90:
+                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjusted);
+                    break;
+                case Surface.ROTATION_180:
+                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjusted);
+                    break;
+                case Surface.ROTATION_270:
+                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjusted);
+                    break;
+                default:
+                    System.arraycopy(rotationMatrix, 0, adjusted, 0, rotationMatrix.length);
+                    remapped = true;
+                    break;
+            }
+            if (!remapped) return;
+
+            float[] orientation = new float[3];
+            SensorManager.getOrientation(adjusted, orientation);
+            float heading = (float) Math.toDegrees(orientation[0]);
+            heading = (heading + 360f) % 360f;
+
+            if (Float.isNaN(lastHeadingDeg)) {
+                lastHeadingDeg = heading;
+            } else {
+                float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
+                lastHeadingDeg = (lastHeadingDeg + delta * 0.45f + 360f) % 360f;
+            }
+            dispatchNativeHeading(lastHeadingDeg);
+        }
+        @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
+
     private final LocationListener nativeLocationListener = new LocationListener() {
         @Override public void onLocationChanged(Location location) {
             dispatchNativeLocation(location);
@@ -50,6 +101,11 @@ public class MainActivity extends Activity {
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
+        }
 
         webView = new WebView(this);
         setContentView(webView);
@@ -171,6 +227,23 @@ public class MainActivity extends Activity {
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
+
+    private void dispatchNativeHeading(float headingDeg) {
+        if (webView == null || Float.isNaN(headingDeg)) return;
+        final String js = "window.__onNativeHeading&&window.__onNativeHeading(" + headingDeg + ");";
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private void startHeadingSensor() {
+        if (sensorManager != null && headingSensor != null) {
+            sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
+    }
+
+    private void stopHeadingSensor() {
+        if (sensorManager != null) sensorManager.unregisterListener(headingListener);
+    }
+
     private boolean openExternalIfNeeded(Uri uri) {
         if (uri == null) return false;
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
@@ -207,8 +280,19 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        startHeadingSensor();
+    }
+
+    @Override protected void onPause() {
+        stopHeadingSensor();
+        super.onPause();
+    }
+
     @Override protected void onDestroy() {
         stopNativeGps();
+        stopHeadingSensor();
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
