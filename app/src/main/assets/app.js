@@ -18,7 +18,21 @@ let navTarget=null,navWatchId=null,passiveGpsWatchId=null,currentGps=null,select
 let projectMeta={upa:'13',bloco:'A NORTE'};
 let mapPackage={name:'mapa_upa13_bloco_norte.png',src:'mapa_upa13_bloco_norte.png',dataUrl:null,bounds:{...DEFAULT_MAP_BOUNDS},updatedAt:null};
 const $=id=>document.getElementById(id);
-window.__onNativeLocation=function(lat,lon,accuracy,bearingDeg,speedMps){currentGps={lat:Number(lat),lon:Number(lon),accuracy:Number(accuracy)||0,bearing:Number(bearingDeg)||0,speed:Number(speedMps)||0};if(navTarget){rememberGpsPoint(currentGps);updateNavigationFromGps(currentGps)}else if(!isAndroidApp())drawMapSoon();updateGpsOverlayPosition()};
+function stableGpsFix(lat,lon,accuracy,bearingDeg,speedMps){
+  const raw={lat:Number(lat),lon:Number(lon),accuracy:Math.max(0,Number(accuracy)||0),bearing:Number(bearingDeg)||0,speed:Math.max(0,Number(speedMps)||0)};
+  if(!validCoord(raw.lat,raw.lon))return currentGps;
+  if(!currentGps||!validCoord(currentGps.lat,currentGps.lon))return raw;
+  const prev=currentGps,d=haversine(prev,raw),acc=raw.accuracy||999,prevAcc=Number(prev.accuracy)||acc;
+  // Comportamento tipo Avenza: parado, o ponto nao "passeia" dentro da margem de erro do GPS.
+  const stopped=raw.speed<0.45;
+  const jitterRadius=Math.max(2.3,Math.min(7.0,Math.min(acc,prevAcc)*0.38));
+  const worseFix=acc>18&&prevAcc>0&&acc>prevAcc*1.55;
+  if(stopped&&(d<=jitterRadius||(worseFix&&d<=Math.min(12,acc*.55)))){
+    return{...prev,accuracy:raw.accuracy||prev.accuracy,bearing:raw.bearing,speed:raw.speed};
+  }
+  return raw;
+}
+window.__onNativeLocation=function(lat,lon,accuracy,bearingDeg,speedMps){currentGps=stableGpsFix(lat,lon,accuracy,bearingDeg,speedMps);if(!currentGps)return;if(navTarget){rememberGpsPoint(currentGps);updateNavigationFromGps(currentGps)}else if(!isAndroidApp())drawMapSoon();updateGpsOverlayPosition()};
 window.__onNativeHeading=function(headingDeg){const h=Number(headingDeg);if(!Number.isFinite(h))return;deviceHeading=(h%360+360)%360;deviceHeadingAt=Date.now();queueGpsHeadingRender()};
 
 function norm(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[º°]/g,'').replace(/[^A-Z0-9]+/g,' ').trim()}
@@ -96,7 +110,7 @@ function startPassiveGpsTracking(){if(window.AndroidBridge?.startLocationUpdates
 function ensureGpsOverlay(){if(!isAndroidApp())return null;if(gpsOverlay&&gpsOverlay.isConnected)return gpsOverlay;const wrap=$('mapWrap');if(!wrap)return null;gpsOverlay=document.createElement('div');gpsOverlay.id='gpsLiveMarker';gpsOverlay.className='gps-live-marker';gpsOverlay.innerHTML='<span class="gps-live-arrow"><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M10 1 L18 18 L10 14.6 L2 18 Z"/></svg></span><span class="gps-live-dot"></span>';gpsOverlayArrow=gpsOverlay.querySelector('.gps-live-arrow');wrap.appendChild(gpsOverlay);return gpsOverlay}
 function queueGpsHeadingRender(){if(!isAndroidApp()||headingRenderRaf)return;headingRenderRaf=requestAnimationFrame(()=>{headingRenderRaf=0;updateGpsOverlayHeading()})}
 function updateGpsOverlayHeading(){if(!isAndroidApp()||!currentGps)return;const el=ensureGpsOverlay();if(!el||!gpsOverlayArrow)return;const dir=gpsTravelBearing(currentGps);gpsOverlayArrow.style.opacity='1';gpsOverlayArrow.style.transform=`translateX(-50%) rotate(${dir===null?0:dir}deg)`}
-function bindBrowserHeadingFallback(){if(browserHeadingBound||!isAndroidApp())return;browserHeadingBound=true;const onHeading=e=>{if(activeScreen!=='map')return;let h=Number(e?.webkitCompassHeading);if(!Number.isFinite(h)){const a=Number(e?.alpha);if(e?.absolute!==true||!Number.isFinite(a))return;h=(360-a)%360}if(Date.now()-deviceHeadingAt<180)return;deviceHeading=(h%360+360)%360;deviceHeadingAt=Date.now();queueGpsHeadingRender()};window.addEventListener('deviceorientationabsolute',onHeading,true);window.addEventListener('deviceorientation',onHeading,true)}
+function bindBrowserHeadingFallback(){if(browserHeadingBound||!isAndroidApp())return;browserHeadingBound=true;const onHeading=e=>{if(activeScreen!=='map')return;let h=Number(e?.webkitCompassHeading);if(!Number.isFinite(h)){const a=Number(e?.alpha);if(e?.absolute!==true||!Number.isFinite(a))return;h=(360-a)%360}if(Date.now()-deviceHeadingAt<1000)return;deviceHeading=(h%360+360)%360;deviceHeadingAt=Date.now();queueGpsHeadingRender()};window.addEventListener('deviceorientationabsolute',onHeading,true);window.addEventListener('deviceorientation',onHeading,true)}
 function updateGpsOverlayPosition(){if(!isAndroidApp())return;const el=ensureGpsOverlay();if(!el)return;if(activeScreen!=='map'||!currentGps||!validCoord(currentGps.lat,currentGps.lon)||!mapState.canvas){el.hidden=true;return}const p=imageToScreen(geoToImage(currentGps.lat,currentGps.lon)),dpr=mapState.canvas._dpr||1,x=p.x/dpr,y=p.y/dpr;if(!Number.isFinite(x)||!Number.isFinite(y)){el.hidden=true;return}el.hidden=false;el.style.transform=`translate3d(${x}px,${y}px,0)`;updateGpsOverlayHeading()}
 function drawMapSoon(){if(mapState.raf)return;mapState.raf=requestAnimationFrame(()=>{mapState.raf=0;drawGeoMap();updateGpsOverlayPosition()})}
 function gpsTravelBearing(gps){if(isAndroidApp()&&Number.isFinite(deviceHeading)&&Date.now()-deviceHeadingAt<5000)return deviceHeading;const speed=Number(gps?.speed)||0,h=Number(gps?.bearing);if(Number.isFinite(h)&&h>=0&&h<360&&(speed>.35||Math.abs(h)>.001))return h;if(gpsTrail.length>=2){const a=gpsTrail[gpsTrail.length-2],b=gpsTrail[gpsTrail.length-1];if(haversine(a,b)>=1.5)return bearing(a,b)}return null}

@@ -67,13 +67,17 @@ public class MainActivity extends Activity {
             lastHeadingDeg = heading;
         } else {
             float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
-            // Resposta rápida sem fazer o marcador tremer demais.
-            lastHeadingDeg = (lastHeadingDeg + delta * 0.94f + 360f) % 360f;
+            float abs = Math.abs(delta);
+            // Cursor tipo Avenza: elimina tremor de bussola quando o aparelho esta parado,
+            // mas responde rapido quando o usuario realmente gira o celular.
+            if (abs < 1.8f) return;
+            float alpha = abs > 18f ? 0.72f : (abs > 7f ? 0.52f : 0.34f);
+            lastHeadingDeg = (lastHeadingDeg + delta * alpha + 360f) % 360f;
         }
         long now = SystemClock.elapsedRealtime();
         float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
-        if (now - lastHeadingDispatchMs < 40L) return;
-        if (changed < 0.20f && now - lastHeadingDispatchMs < 120L) return;
+        if (now - lastHeadingDispatchMs < 50L) return;
+        if (changed < 0.65f && now - lastHeadingDispatchMs < 220L) return;
         lastHeadingDispatchMs = now;
         lastDispatchedHeading = lastHeadingDeg;
         dispatchNativeHeading(lastHeadingDeg);
@@ -328,12 +332,12 @@ public class MainActivity extends Activity {
         lastDispatchedHeading = Float.NaN;
         lastHeadingDispatchMs = 0L;
         if (headingSensor != null) {
-            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_FASTEST);
+            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
         } else if (useAccelMagHeading) {
             haveAccel = false;
             haveMag = false;
-            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_GAME);
             headingRegistered = a || m;
         }
     }
