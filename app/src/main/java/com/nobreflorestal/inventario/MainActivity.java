@@ -42,6 +42,13 @@ public class MainActivity extends Activity {
 
     private SensorManager sensorManager;
     private Sensor headingSensor;
+    private Sensor accelerometer;
+    private Sensor magnetometer;
+    private boolean useAccelMagHeading = false;
+    private boolean haveAccel = false;
+    private boolean haveMag = false;
+    private final float[] accelValues = new float[3];
+    private final float[] magValues = new float[3];
     private boolean headingSensorIsOrientation = false;
     private float lastHeadingDeg = Float.NaN;
     private float lastDispatchedHeading = Float.NaN;
@@ -52,61 +59,83 @@ public class MainActivity extends Activity {
     private final float[] adjustedMatrix = new float[9];
     private final float[] orientationValues = new float[3];
 
+    private void processHeading(float heading) {
+        heading = (heading + 360f) % 360f;
+        if (Float.isNaN(lastHeadingDeg)) {
+            lastHeadingDeg = heading;
+        } else {
+            float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
+            // Resposta rápida sem fazer o marcador tremer demais.
+            lastHeadingDeg = (lastHeadingDeg + delta * 0.82f + 360f) % 360f;
+        }
+        long now = SystemClock.elapsedRealtime();
+        float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
+        if (now - lastHeadingDispatchMs < 32L) return;
+        if (changed < 0.35f && now - lastHeadingDispatchMs < 160L) return;
+        lastHeadingDispatchMs = now;
+        lastDispatchedHeading = lastHeadingDeg;
+        dispatchNativeHeading(lastHeadingDeg);
+    }
+
+    private float headingFromRotationMatrix(float[] matrix) {
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        boolean remapped;
+        switch (rotation) {
+            case Surface.ROTATION_90:
+                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjustedMatrix);
+                break;
+            case Surface.ROTATION_180:
+                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjustedMatrix);
+                break;
+            case Surface.ROTATION_270:
+                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjustedMatrix);
+                break;
+            default:
+                System.arraycopy(matrix, 0, adjustedMatrix, 0, Math.min(matrix.length, adjustedMatrix.length));
+                remapped = true;
+                break;
+        }
+        if (!remapped) return Float.NaN;
+        SensorManager.getOrientation(adjustedMatrix, orientationValues);
+        return (float) Math.toDegrees(orientationValues[0]);
+    }
+
     private final SensorEventListener headingListener = new SensorEventListener() {
         @Override public void onSensorChanged(SensorEvent event) {
             if (event == null || event.values == null || webView == null) return;
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            int type = event.sensor.getType();
+            if (useAccelMagHeading && (type == Sensor.TYPE_ACCELEROMETER || type == Sensor.TYPE_MAGNETIC_FIELD)) {
+                if (type == Sensor.TYPE_ACCELEROMETER) {
+                    System.arraycopy(event.values, 0, accelValues, 0, Math.min(3, event.values.length));
+                    haveAccel = true;
+                } else {
+                    System.arraycopy(event.values, 0, magValues, 0, Math.min(3, event.values.length));
+                    haveMag = true;
+                }
+                if (!haveAccel || !haveMag) return;
+                if (SensorManager.getRotationMatrix(rotationMatrix, null, accelValues, magValues)) {
+                    float h = headingFromRotationMatrix(rotationMatrix);
+                    if (!Float.isNaN(h)) processHeading(h);
+                }
+                return;
+            }
+
             float heading;
-            if (headingSensorIsOrientation || event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
+            if (headingSensorIsOrientation || type == Sensor.TYPE_ORIENTATION) {
+                int rotation = getWindowManager().getDefaultDisplay().getRotation();
                 heading = event.values[0];
                 if (rotation == Surface.ROTATION_90) heading += 90f;
                 else if (rotation == Surface.ROTATION_180) heading += 180f;
                 else if (rotation == Surface.ROTATION_270) heading += 270f;
-                heading = (heading + 360f) % 360f;
             } else {
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-                boolean remapped;
-                switch (rotation) {
-                    case Surface.ROTATION_90:
-                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjustedMatrix);
-                        break;
-                    case Surface.ROTATION_180:
-                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjustedMatrix);
-                        break;
-                    case Surface.ROTATION_270:
-                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjustedMatrix);
-                        break;
-                    default:
-                        System.arraycopy(rotationMatrix, 0, adjustedMatrix, 0, rotationMatrix.length);
-                        remapped = true;
-                        break;
-                }
-                if (!remapped) return;
-                SensorManager.getOrientation(adjustedMatrix, orientationValues);
-                heading = (float) Math.toDegrees(orientationValues[0]);
-                heading = (heading + 360f) % 360f;
+                heading = headingFromRotationMatrix(rotationMatrix);
+                if (Float.isNaN(heading)) return;
             }
-
-            if (Float.isNaN(lastHeadingDeg)) {
-                lastHeadingDeg = heading;
-            } else {
-                float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
-                // Mais responsivo que a versão anterior, sem tremer em excesso.
-                lastHeadingDeg = (lastHeadingDeg + delta * 0.72f + 360f) % 360f;
-            }
-
-            long now = SystemClock.elapsedRealtime();
-            float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
-            // A seta é DOM/CSS no WebView; 15-20 Hz é suave e muito mais leve que redesenhar o mapa.
-            if (now - lastHeadingDispatchMs < 50L) return;
-            if (changed < 0.6f && now - lastHeadingDispatchMs < 220L) return;
-            lastHeadingDispatchMs = now;
-            lastDispatchedHeading = lastHeadingDeg;
-            dispatchNativeHeading(lastHeadingDeg);
+            processHeading(heading);
         }
         @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     };
-
     private final LocationListener nativeLocationListener = new LocationListener() {
         @Override public void onLocationChanged(Location location) {
             dispatchNativeLocation(location);
@@ -127,12 +156,16 @@ public class MainActivity extends Activity {
         if (sensorManager != null) {
             headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
+            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
             if (headingSensor == null) {
-                // Fallback para aparelhos mais simples que não expõem Rotation Vector.
                 headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
                 headingSensorIsOrientation = headingSensor != null;
             }
-            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
+            if (headingSensor == null) {
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+                useAccelMagHeading = accelerometer != null && magnetometer != null;
+            }
         }
 
         webView = new WebView(this);
@@ -271,11 +304,19 @@ public class MainActivity extends Activity {
     }
 
     private void startHeadingSensor() {
-        if (!headingRequested || headingRegistered || sensorManager == null || headingSensor == null) return;
+        if (!headingRequested || headingRegistered || sensorManager == null) return;
         lastHeadingDeg = Float.NaN;
         lastDispatchedHeading = Float.NaN;
         lastHeadingDispatchMs = 0L;
-        headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_UI);
+        if (headingSensor != null) {
+            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
+        } else if (useAccelMagHeading) {
+            haveAccel = false;
+            haveMag = false;
+            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+            headingRegistered = a || m;
+        }
     }
 
     private void stopHeadingSensor() {

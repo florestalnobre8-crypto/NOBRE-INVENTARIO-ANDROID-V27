@@ -116,8 +116,10 @@
 }
 
 
-/* V2.8.7 - marcador GPS Android leve: a seta gira via CSS sem redesenhar milhares de árvores */
-.android-app .gps-live-marker{position:absolute;left:0;top:0;width:0;height:0;z-index:18;pointer-events:none;will-change:transform;contain:layout style paint}
+/* V2.8.9 - marcador GPS leve e seta garantida, sem redesenhar o mapa */
+.android-app .gps-live-marker{position:absolute;left:0;top:0;width:34px;height:34px;margin-left:-17px;margin-top:-17px;z-index:30;pointer-events:none;will-change:transform;contain:layout style;overflow:visible}
 .android-app .gps-live-marker[hidden]{display:none!important}
-.android-app .gps-live-dot{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#1677ff;border:2px solid #fff;box-shadow:0 0 0 3px rgba(22,119,255,.22),0 2px 6px rgba(0,0,0,.18)}
-.android-app .gps-live-arrow{position:absolute;left:0;top:-21px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:14px solid #1677ff;transform-origin:50% 21px;filter:drop-shadow(0 0 2px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.32));will-change:transform;transition:transform 45ms linear;opacity:.72}
+.android-app .gps-live-dot{position:absolute;left:50%;top:50%;width:10px;height:10px;margin-left:-5px;margin-top:-5px;border-radius:50%;background:#1677ff;border:2px solid #fff;box-shadow:0 0 0 3px rgba(22,119,255,.20),0 2px 5px rgba(0,0,0,.22);z-index:2}
+.android-app .gps-live-arrow{position:absolute;left:50%;top:-1px;width:14px;height:21px;transform:translateX(-50%) rotate(0deg);transform-origin:50% 18px;will-change:transform;transition:transform 28ms linear;opacity:1;z-index:1;overflow:visible}
+.android-app .gps-live-arrow svg{display:block;width:14px;height:21px;overflow:visible;filter:drop-shadow(0 0 1.4px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.32))}
+.android-app .gps-live-arrow path{fill:#1677ff;stroke:#fff;stroke-width:1.7;stroke-linejoin:round}
