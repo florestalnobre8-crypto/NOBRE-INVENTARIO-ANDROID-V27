@@ -14,7 +14,7 @@
     <div class="brand-block">
       <img src="app_icon.png" class="brand-icon" alt="">
       <div>
-        <div class="mobile-brand">NOBRE FLORESTAL</div><div class="brand-name">UPA 13 • BLOCO A NORTE</div>
+        <div class="mobile-brand">NOBRE FLORESTAL</div><div class="brand-name" id="projectHeaderName">UPA 13 • BLOCO A NORTE</div>
         <h1>Inventário</h1>
         <div class="header-meta"><span id="syncStatus">Sem dados carregados</span></div>
       </div>
@@ -30,7 +30,7 @@
     <section class="screen active" id="homeScreen">
       <div class="hero-card">
         <div class="hero-copy">
-          <span class="hero-kicker">UPA 13 • BLOCO A NORTE</span>
+          <span class="hero-kicker" id="projectHeroName">UPA 13 • BLOCO A NORTE</span>
           <h2>Mapa e inventário florestal em um só lugar</h2>
           <p>Consulte as árvores, acompanhe a situação e navegue pelas coordenadas mesmo sem internet.</p>
           <button class="primary-cta" data-go="map">Abrir mapa <span>→</span></button>
@@ -56,14 +56,14 @@
         <div class="home-search-results" id="homeSearchResults">
           <div class="home-search-empty">
             <b>Digite o número da árvore</b>
-            <small>O app procura nas UTs 01 a 19 e mostra a classificação e a situação atual.</small>
+            <small>O app procura em todas as UTs carregadas e mostra a classificação e a situação atual.</small>
           </div>
         </div>
       </section>
 
       <div class="section-title"><div><span>Resumo</span><h3>Situação das árvores</h3></div><button class="ghost-btn" data-go="trees">Ver árvores</button></div>
       <section class="kpi-grid">
-        <article class="kpi-card total"><div class="kpi-icon">◉</div><div><span>Total</span><strong id="kpiTotal">0</strong><small>árvores das UTs 01 a 19</small></div></article>
+        <article class="kpi-card total"><div class="kpi-icon">◉</div><div><span>Total</span><strong id="kpiTotal">0</strong><small>árvores do projeto</small></div></article>
         <article class="kpi-card explorar"><div class="kpi-icon">●</div><div><span>A explorar</span><strong id="kpiExplorar">0</strong><small id="kpiExplorarMeta">árvores que faltam derrubar</small><em id="kpiExplorarCap">CAP: 0</em></div></article>
         <article class="kpi-card cortada"><div class="kpi-icon">●</div><div><span>Cortada</span><strong id="kpiCorte">0</strong><small>corte efetuado</small></div></article>
         <article class="kpi-card nao"><div class="kpi-icon">●</div><div><span>Não efetuado</span><strong id="kpiNao">0</strong><small>corte não efetuado</small></div></article>
@@ -98,12 +98,12 @@
       </div>
       <div class="map-topbar">
         <div>
-          <span>UPA 13 • BLOCO A NORTE</span>
+          <span id="projectMapName">UPA 13 • BLOCO A NORTE</span>
           <strong>Mapa georreferenciado</strong>
         </div>
         <div class="map-actions">
           <button class="map-round" id="filterMapBtn" title="Filtros">≡</button>
-          <button class="map-round" id="myLocationBtn" title="Minha localização">◎</button>
+          <button class="map-round nav-location-btn" id="myLocationBtn" title="Minha localização / acompanhar GPS"><span class="nav-location-pointer">➤</span></button>
           <button class="map-round label-toggle active" id="labelsToggleBtn" title="Mostrar/ocultar numeração">Nº</button>
           <button class="map-round" id="fitMapBtn" title="Enquadrar">⌗</button>
         </div>
@@ -122,7 +122,7 @@
           <span class="map-note">A árvore permanece no mapa e troca de cor conforme a situação.</span>
         </div>
         <div class="nav-hud" id="navHud" hidden>
-          <div class="nav-arrow" id="navArrow">↑</div>
+          <div class="nav-arrow" id="navArrow"><span>▲</span></div>
           <div><small>NAVEGAÇÃO OFFLINE</small><strong id="navDistance">—</strong><span id="navBearing">Aguardando GPS...</span></div>
           <button id="stopNavBtn">Parar</button>
         </div>
@@ -153,6 +153,7 @@
 </div>
 
 <input id="excelFile" type="file" accept=".xls,.xlsx,.xlsm,.csv" hidden>
+<input id="mapImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
 
 <dialog id="filterDialog" class="modal-dialog">
   <form method="dialog" class="modal-card" onsubmit="return false">
@@ -179,7 +180,28 @@
       <button class="settings-row" id="watchFileBtn"><span>↻</span><div><strong>Vincular planilha automática</strong><small>Chrome/Edge no computador</small></div><i>›</i></button>
       <button class="settings-row" id="refreshCloudBtn"><span>☁</span><div><strong>Buscar atualização</strong><small>Sincronizar agora</small></div><i>›</i></button>
     </div>
-    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da primeira sincronização, o inventário e o mapa continuam disponíveis sem internet. O GPS usa latitude/longitude da árvore.</small></div></div></div>
+    <div class="setting-section pc-only project-map-section"><h3>Novo projeto / mapa georreferenciado</h3>
+      <p>Para UPA 14, UPA 15 e outros projetos: carregue a nova planilha e depois o mapa. O nome da UPA é lido da planilha; o bloco pode ser lido da planilha ou informado aqui.</p>
+      <div class="project-grid">
+        <label>UPA<input id="projectUpaInput" placeholder="Ex.: 14"></label>
+        <label>Bloco<input id="projectBlockInput" placeholder="Ex.: A NORTE"></label>
+      </div>
+      <div class="last-file-card map-file-card"><span>⌖</span><div><strong>Mapa atual do projeto</strong><small id="mapFileInfo">Mapa padrão UPA 13</small></div></div>
+      <button class="settings-row" id="mapImportBtn"><span>▣</span><div><strong>Adicionar / trocar mapa</strong><small>PNG, JPG ou WEBP</small></div><i>›</i></button>
+      <div class="map-calibration-card">
+        <strong>Encaixe das árvores no mapa</strong>
+        <small>Use “Auto encaixar” e, se necessário, ajuste os limites pelas coordenadas do mapa.</small>
+        <div class="bounds-grid">
+          <label>Norte<input id="mapNorthInput" inputmode="decimal"></label>
+          <label>Sul<input id="mapSouthInput" inputmode="decimal"></label>
+          <label>Oeste<input id="mapWestInput" inputmode="decimal"></label>
+          <label>Leste<input id="mapEastInput" inputmode="decimal"></label>
+        </div>
+        <button class="secondary-btn full" id="autoFitBoundsBtn">Auto encaixar pelas árvores</button>
+      </div>
+      <button class="primary-btn full" id="saveProjectMapBtn">Salvar projeto e enviar aos celulares</button>
+    </div>
+    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da primeira sincronização, o inventário e o mapa do projeto ficam salvos no aparelho. A navegação usa GPS offline e mostra sua posição com ponto azul até o destino.</small></div></div></div>
   </form>
 </dialog>
 

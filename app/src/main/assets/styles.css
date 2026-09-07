@@ -100,3 +100,17 @@
 .label-toggle{font-weight:950!important;letter-spacing:-.5px}.label-toggle.active::after{content:'✓';font-size:.62em;margin-left:1px}.label-toggle:not(.active)::after{content:'×';font-size:.62em;margin-left:1px}
 .map-hint{max-width:min(74vw,560px)}
 @media(max-width:700px){.last-file-card{padding:9px 10px}.last-file-card>span{width:28px;height:28px}.map-round.label-toggle{font-size:10px!important;letter-spacing:-.4px}}
+
+/* ===== V2.8 — PROJETOS DINÂMICOS + MAPA SINCRONIZADO + GPS OFFLINE ===== */
+.project-map-section{border-top:2px solid #d7eadf;padding-top:14px}.project-map-section>p{margin:0 0 10px;color:#587065;font-size:11px;line-height:1.5}
+.project-grid,.bounds-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.project-grid label,.bounds-grid label{margin:0}.project-grid input,.bounds-grid input{width:100%;box-sizing:border-box}
+.map-file-card{margin-top:10px}.map-calibration-card{margin:10px 0;padding:12px;border:1px solid #cfe4d7;border-radius:14px;background:#f6fbf8}.map-calibration-card>strong{display:block;color:#083e28;font-size:12px}.map-calibration-card>small{display:block;color:#637a6e;font-size:10px;line-height:1.4;margin:4px 0 10px}.map-calibration-card .secondary-btn{margin-top:9px}.full{width:100%}
+.nav-location-btn{position:relative}.nav-location-pointer{display:block;font-size:14px;line-height:1;transform:rotate(-42deg);font-weight:1000}.nav-location-btn.tracking{background:#1677ff!important;color:#fff!important;border-color:#62a9ff!important;box-shadow:0 0 0 3px rgba(22,119,255,.15)}
+.nav-hud .nav-arrow{display:grid;place-items:center;overflow:hidden}.nav-hud .nav-arrow span{display:block;font-size:18px;line-height:1;color:#fff}
+.compact-nav{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-height:38px!important;padding:8px 12px!important;font-size:10px!important}.mini-nav-icon{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.18);font-size:12px;transform:rotate(-42deg)}
+.android-app .pc-only{display:none!important}
+@media(max-width:700px){
+  .nav-hud{grid-template-columns:35px 1fr 46px!important;padding:7px 8px!important;bottom:7px!important}.nav-hud .nav-arrow{width:33px!important;height:33px!important;border-radius:50%!important;background:#1677ff!important}.nav-hud .nav-arrow span{font-size:15px}.nav-hud strong{font-size:15px!important}.nav-hud span{font-size:7.5px!important}.nav-hud button{font-size:7.5px!important;padding:7px 5px!important}
+  .nav-location-btn{width:30px!important;height:30px!important;border-radius:9px!important}.nav-location-pointer{font-size:12px}
+  .compact-nav{min-height:36px!important;padding:7px 10px!important}.project-grid,.bounds-grid{grid-template-columns:1fr}
+}

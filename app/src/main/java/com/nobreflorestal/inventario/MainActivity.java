@@ -165,7 +165,9 @@ public class MainActivity extends Activity {
         final double lat = location.getLatitude();
         final double lon = location.getLongitude();
         final float acc = location.hasAccuracy() ? location.getAccuracy() : 0f;
-        final String js = "window.__onNativeLocation&&window.__onNativeLocation(" + lat + "," + lon + "," + acc + ");";
+        final float bearing = location.hasBearing() ? location.getBearing() : 0f;
+        final float speed = location.hasSpeed() ? location.getSpeed() : 0f;
+        final String js = "window.__onNativeLocation&&window.__onNativeLocation(" + lat + "," + lon + "," + acc + "," + bearing + "," + speed + ");";
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
