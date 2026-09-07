@@ -55,6 +55,8 @@ public class MainActivity extends Activity {
     private long lastHeadingDispatchMs = 0L;
     private boolean headingRequested = false;
     private boolean headingRegistered = false;
+    private boolean headingJsPending = false;
+    private float pendingHeadingJs = Float.NaN;
     private final float[] rotationMatrix = new float[9];
     private final float[] adjustedMatrix = new float[9];
     private final float[] orientationValues = new float[3];
@@ -66,12 +68,12 @@ public class MainActivity extends Activity {
         } else {
             float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
             // Resposta rápida sem fazer o marcador tremer demais.
-            lastHeadingDeg = (lastHeadingDeg + delta * 0.82f + 360f) % 360f;
+            lastHeadingDeg = (lastHeadingDeg + delta * 0.94f + 360f) % 360f;
         }
         long now = SystemClock.elapsedRealtime();
         float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
-        if (now - lastHeadingDispatchMs < 32L) return;
-        if (changed < 0.35f && now - lastHeadingDispatchMs < 160L) return;
+        if (now - lastHeadingDispatchMs < 40L) return;
+        if (changed < 0.20f && now - lastHeadingDispatchMs < 120L) return;
         lastHeadingDispatchMs = now;
         lastDispatchedHeading = lastHeadingDeg;
         dispatchNativeHeading(lastHeadingDeg);
@@ -299,8 +301,25 @@ public class MainActivity extends Activity {
 
     private void dispatchNativeHeading(float headingDeg) {
         if (webView == null || Float.isNaN(headingDeg)) return;
-        final String js = "window.__onNativeHeading&&window.__onNativeHeading(" + headingDeg + ");";
-        webView.post(() -> webView.evaluateJavascript(js, null));
+        pendingHeadingJs = headingDeg;
+        if (headingJsPending) return;
+        headingJsPending = true;
+        webView.post(this::flushNativeHeadingToJs);
+    }
+
+    private void flushNativeHeadingToJs() {
+        if (webView == null) {
+            headingJsPending = false;
+            pendingHeadingJs = Float.NaN;
+            return;
+        }
+        final float heading = pendingHeadingJs;
+        pendingHeadingJs = Float.NaN;
+        final String js = "window.__onNativeHeading&&window.__onNativeHeading(" + heading + ");";
+        webView.evaluateJavascript(js, value -> {
+            headingJsPending = false;
+            if (!Float.isNaN(pendingHeadingJs)) dispatchNativeHeading(pendingHeadingJs);
+        });
     }
 
     private void startHeadingSensor() {
@@ -309,12 +328,12 @@ public class MainActivity extends Activity {
         lastDispatchedHeading = Float.NaN;
         lastHeadingDispatchMs = 0L;
         if (headingSensor != null) {
-            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
+            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_FASTEST);
         } else if (useAccelMagHeading) {
             haveAccel = false;
             haveMag = false;
-            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
             headingRegistered = a || m;
         }
     }
@@ -322,6 +341,7 @@ public class MainActivity extends Activity {
     private void stopHeadingSensor() {
         if (sensorManager != null && headingRegistered) sensorManager.unregisterListener(headingListener);
         headingRegistered = false;
+        pendingHeadingJs = Float.NaN;
     }
 
     private boolean openExternalIfNeeded(Uri uri) {

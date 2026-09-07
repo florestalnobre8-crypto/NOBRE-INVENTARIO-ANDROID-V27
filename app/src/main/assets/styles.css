@@ -116,10 +116,10 @@
 }
 
 
-/* V2.8.9 - marcador GPS leve e seta garantida, sem redesenhar o mapa */
-.android-app .gps-live-marker{position:absolute;left:0;top:0;width:34px;height:34px;margin-left:-17px;margin-top:-17px;z-index:30;pointer-events:none;will-change:transform;contain:layout style;overflow:visible}
+/* V2.8.10 - somente cursor GPS: seta visível e resposta imediata; mapa permanece como antes */
+.android-app .gps-live-marker{position:absolute;left:0;top:0;width:28px;height:28px;margin-left:-14px;margin-top:-14px;z-index:30;pointer-events:none;will-change:transform;contain:layout style;overflow:visible}
 .android-app .gps-live-marker[hidden]{display:none!important}
-.android-app .gps-live-dot{position:absolute;left:50%;top:50%;width:10px;height:10px;margin-left:-5px;margin-top:-5px;border-radius:50%;background:#1677ff;border:2px solid #fff;box-shadow:0 0 0 3px rgba(22,119,255,.20),0 2px 5px rgba(0,0,0,.22);z-index:2}
-.android-app .gps-live-arrow{position:absolute;left:50%;top:-1px;width:14px;height:21px;transform:translateX(-50%) rotate(0deg);transform-origin:50% 18px;will-change:transform;transition:transform 28ms linear;opacity:1;z-index:1;overflow:visible}
-.android-app .gps-live-arrow svg{display:block;width:14px;height:21px;overflow:visible;filter:drop-shadow(0 0 1.4px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.32))}
+.android-app .gps-live-dot{position:absolute;left:50%;top:50%;width:9px;height:9px;margin-left:-4.5px;margin-top:-4.5px;border-radius:50%;background:#1677ff;border:2px solid #fff;box-shadow:0 0 0 3px rgba(22,119,255,.20),0 2px 5px rgba(0,0,0,.22);z-index:2}
+.android-app .gps-live-arrow{position:absolute;left:50%;top:-1px;width:12px;height:18px;transform:translateX(-50%) rotate(0deg);transform-origin:50% 16px;will-change:transform;transition:none;opacity:1;z-index:1;overflow:visible}
+.android-app .gps-live-arrow svg{display:block;width:12px;height:18px;overflow:visible;filter:drop-shadow(0 0 1.2px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.30))}
 .android-app .gps-live-arrow path{fill:#1677ff;stroke:#fff;stroke-width:1.7;stroke-linejoin:round}
