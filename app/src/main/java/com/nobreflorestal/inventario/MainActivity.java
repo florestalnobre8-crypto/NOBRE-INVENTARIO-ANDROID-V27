@@ -17,6 +17,7 @@ import android.hardware.SensorManager;
 import android.view.Surface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -41,45 +42,66 @@ public class MainActivity extends Activity {
 
     private SensorManager sensorManager;
     private Sensor headingSensor;
+    private boolean headingSensorIsOrientation = false;
     private float lastHeadingDeg = Float.NaN;
+    private float lastDispatchedHeading = Float.NaN;
+    private long lastHeadingDispatchMs = 0L;
+    private boolean headingRequested = false;
+    private boolean headingRegistered = false;
+    private final float[] rotationMatrix = new float[9];
+    private final float[] adjustedMatrix = new float[9];
+    private final float[] orientationValues = new float[3];
 
     private final SensorEventListener headingListener = new SensorEventListener() {
         @Override public void onSensorChanged(SensorEvent event) {
             if (event == null || event.values == null || webView == null) return;
-            float[] rotationMatrix = new float[9];
-            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            float[] adjusted = new float[9];
-            boolean remapped;
-            switch (rotation) {
-                case Surface.ROTATION_90:
-                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjusted);
-                    break;
-                case Surface.ROTATION_180:
-                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjusted);
-                    break;
-                case Surface.ROTATION_270:
-                    remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjusted);
-                    break;
-                default:
-                    System.arraycopy(rotationMatrix, 0, adjusted, 0, rotationMatrix.length);
-                    remapped = true;
-                    break;
+            float heading;
+            if (headingSensorIsOrientation || event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
+                heading = event.values[0];
+                if (rotation == Surface.ROTATION_90) heading += 90f;
+                else if (rotation == Surface.ROTATION_180) heading += 180f;
+                else if (rotation == Surface.ROTATION_270) heading += 270f;
+                heading = (heading + 360f) % 360f;
+            } else {
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+                boolean remapped;
+                switch (rotation) {
+                    case Surface.ROTATION_90:
+                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjustedMatrix);
+                        break;
+                    case Surface.ROTATION_180:
+                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjustedMatrix);
+                        break;
+                    case Surface.ROTATION_270:
+                        remapped = SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjustedMatrix);
+                        break;
+                    default:
+                        System.arraycopy(rotationMatrix, 0, adjustedMatrix, 0, rotationMatrix.length);
+                        remapped = true;
+                        break;
+                }
+                if (!remapped) return;
+                SensorManager.getOrientation(adjustedMatrix, orientationValues);
+                heading = (float) Math.toDegrees(orientationValues[0]);
+                heading = (heading + 360f) % 360f;
             }
-            if (!remapped) return;
-
-            float[] orientation = new float[3];
-            SensorManager.getOrientation(adjusted, orientation);
-            float heading = (float) Math.toDegrees(orientation[0]);
-            heading = (heading + 360f) % 360f;
 
             if (Float.isNaN(lastHeadingDeg)) {
                 lastHeadingDeg = heading;
             } else {
                 float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
-                lastHeadingDeg = (lastHeadingDeg + delta * 0.45f + 360f) % 360f;
+                // Mais responsivo que a versão anterior, sem tremer em excesso.
+                lastHeadingDeg = (lastHeadingDeg + delta * 0.72f + 360f) % 360f;
             }
+
+            long now = SystemClock.elapsedRealtime();
+            float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
+            // A seta é DOM/CSS no WebView; 15-20 Hz é suave e muito mais leve que redesenhar o mapa.
+            if (now - lastHeadingDispatchMs < 50L) return;
+            if (changed < 0.6f && now - lastHeadingDispatchMs < 220L) return;
+            lastHeadingDispatchMs = now;
+            lastDispatchedHeading = lastHeadingDeg;
             dispatchNativeHeading(lastHeadingDeg);
         }
         @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
@@ -105,6 +127,12 @@ public class MainActivity extends Activity {
         if (sensorManager != null) {
             headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
+            if (headingSensor == null) {
+                // Fallback para aparelhos mais simples que não expõem Rotation Vector.
+                headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+                headingSensorIsOrientation = headingSensor != null;
+            }
+            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
         }
 
         webView = new WebView(this);
@@ -181,6 +209,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void stopLocationUpdates() {
             runOnUiThread(() -> stopNativeGps());
         }
+        @JavascriptInterface public void startHeadingUpdates() {
+            runOnUiThread(() -> { headingRequested = true; startHeadingSensor(); });
+        }
+        @JavascriptInterface public void stopHeadingUpdates() {
+            runOnUiThread(() -> { headingRequested = false; stopHeadingSensor(); });
+        }
     }
 
     private void startNativeGps(boolean continuous) {
@@ -194,6 +228,8 @@ public class MainActivity extends Activity {
         if (locationManager == null) return;
 
         try {
+            // Evita múltiplos listeners acumulados ao tocar várias vezes em localização/navegação.
+            try { locationManager.removeUpdates(nativeLocationListener); } catch (SecurityException ignored) {}
             Location last = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (last == null) last = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             if (last != null) dispatchNativeLocation(last);
@@ -235,13 +271,16 @@ public class MainActivity extends Activity {
     }
 
     private void startHeadingSensor() {
-        if (sensorManager != null && headingSensor != null) {
-            sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
-        }
+        if (!headingRequested || headingRegistered || sensorManager == null || headingSensor == null) return;
+        lastHeadingDeg = Float.NaN;
+        lastDispatchedHeading = Float.NaN;
+        lastHeadingDispatchMs = 0L;
+        headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_UI);
     }
 
     private void stopHeadingSensor() {
-        if (sensorManager != null) sensorManager.unregisterListener(headingListener);
+        if (sensorManager != null && headingRegistered) sensorManager.unregisterListener(headingListener);
+        headingRegistered = false;
     }
 
     private boolean openExternalIfNeeded(Uri uri) {
@@ -282,7 +321,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        startHeadingSensor();
+        if (headingRequested) startHeadingSensor();
     }
 
     @Override protected void onPause() {
