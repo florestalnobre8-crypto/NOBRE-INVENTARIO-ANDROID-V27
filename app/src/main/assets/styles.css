@@ -158,3 +158,5 @@ body .map-wrap{padding-top:0}
   .track-hud.bottom{width:100%;min-width:0}
   .dock-btn{width:52px;height:52px;border-radius:16px;font-size:21px}
 }
+
+.map-tools-dock[hidden]{display:none!important}
