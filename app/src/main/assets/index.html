@@ -95,19 +95,20 @@
           <button class="map-round" id="filterMapBtn" title="Filtros">≡</button>
           <button class="map-round nav-location-btn" id="myLocationBtn" title="Minha localização / acompanhar GPS"><span class="nav-location-pointer">➤</span></button>
           <button class="map-round label-toggle active" id="labelsToggleBtn" title="Mostrar/ocultar numeração">Nº</button>
+          <button class="map-round trees-toggle active" id="treesToggleBtn" title="Mostrar/ocultar árvores">Árv</button>
           <button class="map-round" id="fitMapBtn" title="Enquadrar">⌗</button>
         </div>
       </div>
       <div class="map-wrap" id="mapWrap">
         <canvas id="geoMap"></canvas>
-        <button class="track-toggle" id="trackToggleBtn" title="Iniciar ou parar rastreamento do percurso"><span>●</span><b>Rastrear percurso</b></button>
-        <div class="track-hud" id="trackHud" hidden>
-          <div class="track-rec" id="trackRecDot">●</div>
-          <div><small id="trackStatusText">RASTREAMENTO</small><strong id="trackDistance">0 m</strong><span id="trackInfo">0 pontos • 00:00</span></div>
-          <button id="trackExportBtn" hidden>Exportar SHP</button>
+        <div class="map-tools-dock" id="mapToolsDock" hidden>
+          <button class="dock-btn" id="dockCenterBtn" title="Minha localização">📍</button>
+          <button class="dock-btn" id="dockLabelBtn" title="Mostrar/ocultar numeração">✎</button>
+          <button class="dock-btn" id="dockTrackBtn" title="Novo rastreio">〰</button>
+          <button class="dock-btn" id="dockExportBtn" title="Exportar SHP">▤</button>
+          <button class="dock-btn" id="dockFitBtn" title="Enquadrar mapa">⬈</button>
+          <button class="dock-btn" id="dockTargetBtn" title="Centralizar localização">◎</button>
         </div>
-        <div class="zoom-control"><button id="zoomIn">+</button><button id="zoomOut">−</button></div>
-        <div class="map-hint" id="mapHint">Árvores do plano • cores pela situação • arraste para mover</div>
         <div class="map-count" id="mapCount">0 árvores no mapa</div>
         <div class="map-legend" id="mapLegend">
           <span><i class="c-explorar"></i>A explorar</span>
@@ -121,6 +122,14 @@
           <div class="nav-arrow" id="navArrow"><span>▲</span></div>
           <div><small>NAVEGAÇÃO OFFLINE</small><strong id="navDistance">—</strong><span id="navBearing">Aguardando GPS...</span></div>
           <button id="stopNavBtn">Parar</button>
+        </div>
+      </div>
+      <div class="map-bottom-panel">
+        <button class="track-toggle bottom" id="trackToggleBtn" title="Iniciar ou parar rastreamento do percurso"><span>●</span><b>Novo rastreio</b></button>
+        <div class="track-hud bottom" id="trackHud" hidden>
+          <div class="track-rec" id="trackRecDot">●</div>
+          <div><small id="trackStatusText">ÚLTIMO PERCURSO</small><strong id="trackDistance">0 m</strong><span id="trackInfo">0 pontos • 00:00</span></div>
+          <button id="trackExportBtn" hidden>Exportar SHP</button>
         </div>
       </div>
     </section>
@@ -166,6 +175,7 @@
   <form method="dialog" class="modal-card settings-card" onsubmit="return false">
     <div class="modal-head"><div><span>Nobre Florestal</span><h2>Configurações</h2></div><button class="close-modal" value="cancel">×</button></div>
     <div class="setting-section"><h3>Sincronização PC ↔ celular</h3><p>Use a mesma URL e chave no computador e no celular. O celular guarda a última atualização para trabalhar offline.</p>
+      <div class="settings-lock-row"><span class="settings-lock-badge">Bloqueado</span><button class="secondary-btn" id="settingsEditBtn">✎ Editar</button></div>
       <label>URL do Apps Script<input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <label>Chave de sincronização<input id="syncKey" placeholder="NOBRE-UPA13-2026"></label>
       <button class="primary-btn full" id="saveSettingsBtn">Salvar configuração</button>

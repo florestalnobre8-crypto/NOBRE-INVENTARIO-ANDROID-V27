@@ -134,3 +134,27 @@
 @media(max-width:700px){.track-toggle{left:8px;top:44px;padding:7px 9px;font-size:8px;border-radius:10px}.track-hud{left:8px;top:82px;width:min(310px,calc(100% - 58px));padding:7px 8px;grid-template-columns:18px 1fr auto;gap:6px;border-radius:11px}.track-rec{font-size:16px}.track-hud strong{font-size:14px}.track-hud span{font-size:7px}.track-hud button{padding:7px 7px;font-size:7px}.track-toggle b{font-size:8px}}
 
 
+
+/* ===== AJUSTE ANDROID: CURSOR MENOR + ARVORES ON/OFF ===== */
+.trees-toggle.active{background:#19bd5b!important;color:#fff!important;border-color:#47e782!important;box-shadow:0 0 0 2px rgba(31,210,102,.16)}
+.trees-toggle:not(.active){background:#fff!important;color:#607267!important;border-color:#cfdad3!important}
+@media(max-width:700px){.map-actions{gap:4px}.map-round.trees-toggle{font-size:9px;font-weight:950;letter-spacing:-.3px}}
+
+
+.map-bottom-panel{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-start;margin-top:10px;margin-bottom:8px}
+.track-toggle.bottom{position:static;box-shadow:var(--shadow2)}
+.track-hud.bottom{position:static;left:auto;top:auto;transform:none;min-width:min(100%,540px);box-shadow:var(--shadow2)}
+.map-tools-dock{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:10px;z-index:8}
+.dock-btn{width:58px;height:58px;border:0;border-radius:18px;background:rgba(53,53,53,.72);backdrop-filter:blur(8px);box-shadow:0 10px 24px rgba(0,0,0,.20);font-size:24px;color:#fff}
+.dock-btn.active{background:rgba(11,90,53,.90);color:#aff0c0}
+.settings-lock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 14px}
+.settings-lock-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#eef6f1;color:#496656;font-weight:800;font-size:12px}
+.settings-lock-badge.unlocked{background:#e8f7ed;color:#0b5a35}
+body .zoom-control{display:none!important}
+body .map-hint{display:none!important}
+body .map-wrap{padding-top:0}
+@media (max-width:900px){
+  .map-bottom-panel{padding:0 2px}
+  .track-hud.bottom{width:100%;min-width:0}
+  .dock-btn{width:52px;height:52px;border-radius:16px;font-size:21px}
+}
