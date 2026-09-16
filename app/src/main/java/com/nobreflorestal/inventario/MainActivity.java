@@ -10,14 +10,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.view.Surface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -40,108 +34,6 @@ public class MainActivity extends Activity {
     private boolean nativeGpsContinuous = false;
     private boolean pendingNativeGps = false;
 
-    private SensorManager sensorManager;
-    private Sensor headingSensor;
-    private Sensor accelerometer;
-    private Sensor magnetometer;
-    private boolean useAccelMagHeading = false;
-    private boolean haveAccel = false;
-    private boolean haveMag = false;
-    private final float[] accelValues = new float[3];
-    private final float[] magValues = new float[3];
-    private boolean headingSensorIsOrientation = false;
-    private float lastHeadingDeg = Float.NaN;
-    private float lastDispatchedHeading = Float.NaN;
-    private long lastHeadingDispatchMs = 0L;
-    private boolean headingRequested = false;
-    private boolean headingRegistered = false;
-    private boolean headingJsPending = false;
-    private float pendingHeadingJs = Float.NaN;
-    private final float[] rotationMatrix = new float[9];
-    private final float[] adjustedMatrix = new float[9];
-    private final float[] orientationValues = new float[3];
-
-    private void processHeading(float heading) {
-        heading = (heading + 360f) % 360f;
-        if (Float.isNaN(lastHeadingDeg)) {
-            lastHeadingDeg = heading;
-        } else {
-            float delta = ((heading - lastHeadingDeg + 540f) % 360f) - 180f;
-            float abs = Math.abs(delta);
-            // Cursor tipo Avenza: elimina tremor de bussola quando o aparelho esta parado,
-            // mas responde rapido quando o usuario realmente gira o celular.
-            if (abs < 1.8f) return;
-            float alpha = abs > 18f ? 0.72f : (abs > 7f ? 0.52f : 0.34f);
-            lastHeadingDeg = (lastHeadingDeg + delta * alpha + 360f) % 360f;
-        }
-        long now = SystemClock.elapsedRealtime();
-        float changed = Float.isNaN(lastDispatchedHeading) ? 999f : Math.abs(((lastHeadingDeg - lastDispatchedHeading + 540f) % 360f) - 180f);
-        if (now - lastHeadingDispatchMs < 50L) return;
-        if (changed < 0.65f && now - lastHeadingDispatchMs < 220L) return;
-        lastHeadingDispatchMs = now;
-        lastDispatchedHeading = lastHeadingDeg;
-        dispatchNativeHeading(lastHeadingDeg);
-    }
-
-    private float headingFromRotationMatrix(float[] matrix) {
-        int rotation = getWindowManager().getDefaultDisplay().getRotation();
-        boolean remapped;
-        switch (rotation) {
-            case Surface.ROTATION_90:
-                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, adjustedMatrix);
-                break;
-            case Surface.ROTATION_180:
-                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, adjustedMatrix);
-                break;
-            case Surface.ROTATION_270:
-                remapped = SensorManager.remapCoordinateSystem(matrix, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, adjustedMatrix);
-                break;
-            default:
-                System.arraycopy(matrix, 0, adjustedMatrix, 0, Math.min(matrix.length, adjustedMatrix.length));
-                remapped = true;
-                break;
-        }
-        if (!remapped) return Float.NaN;
-        SensorManager.getOrientation(adjustedMatrix, orientationValues);
-        return (float) Math.toDegrees(orientationValues[0]);
-    }
-
-    private final SensorEventListener headingListener = new SensorEventListener() {
-        @Override public void onSensorChanged(SensorEvent event) {
-            if (event == null || event.values == null || webView == null) return;
-            int type = event.sensor.getType();
-            if (useAccelMagHeading && (type == Sensor.TYPE_ACCELEROMETER || type == Sensor.TYPE_MAGNETIC_FIELD)) {
-                if (type == Sensor.TYPE_ACCELEROMETER) {
-                    System.arraycopy(event.values, 0, accelValues, 0, Math.min(3, event.values.length));
-                    haveAccel = true;
-                } else {
-                    System.arraycopy(event.values, 0, magValues, 0, Math.min(3, event.values.length));
-                    haveMag = true;
-                }
-                if (!haveAccel || !haveMag) return;
-                if (SensorManager.getRotationMatrix(rotationMatrix, null, accelValues, magValues)) {
-                    float h = headingFromRotationMatrix(rotationMatrix);
-                    if (!Float.isNaN(h)) processHeading(h);
-                }
-                return;
-            }
-
-            float heading;
-            if (headingSensorIsOrientation || type == Sensor.TYPE_ORIENTATION) {
-                int rotation = getWindowManager().getDefaultDisplay().getRotation();
-                heading = event.values[0];
-                if (rotation == Surface.ROTATION_90) heading += 90f;
-                else if (rotation == Surface.ROTATION_180) heading += 180f;
-                else if (rotation == Surface.ROTATION_270) heading += 270f;
-            } else {
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-                heading = headingFromRotationMatrix(rotationMatrix);
-                if (Float.isNaN(heading)) return;
-            }
-            processHeading(heading);
-        }
-        @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-    };
     private final LocationListener nativeLocationListener = new LocationListener() {
         @Override public void onLocationChanged(Location location) {
             dispatchNativeLocation(location);
@@ -158,21 +50,6 @@ public class MainActivity extends Activity {
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        if (sensorManager != null) {
-            headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
-            if (headingSensor == null) headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
-            if (headingSensor == null) {
-                headingSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-                headingSensorIsOrientation = headingSensor != null;
-            }
-            if (headingSensor == null) {
-                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-                magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-                useAccelMagHeading = accelerometer != null && magnetometer != null;
-            }
-        }
 
         webView = new WebView(this);
         setContentView(webView);
@@ -248,12 +125,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void stopLocationUpdates() {
             runOnUiThread(() -> stopNativeGps());
         }
-        @JavascriptInterface public void startHeadingUpdates() {
-            runOnUiThread(() -> { headingRequested = true; startHeadingSensor(); });
-        }
-        @JavascriptInterface public void stopHeadingUpdates() {
-            runOnUiThread(() -> { headingRequested = false; stopHeadingSensor(); });
-        }
     }
 
     private void startNativeGps(boolean continuous) {
@@ -267,8 +138,6 @@ public class MainActivity extends Activity {
         if (locationManager == null) return;
 
         try {
-            // Evita múltiplos listeners acumulados ao tocar várias vezes em localização/navegação.
-            try { locationManager.removeUpdates(nativeLocationListener); } catch (SecurityException ignored) {}
             Location last = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (last == null) last = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             if (last != null) dispatchNativeLocation(last);
@@ -300,52 +169,6 @@ public class MainActivity extends Activity {
         final float speed = location.hasSpeed() ? location.getSpeed() : 0f;
         final String js = "window.__onNativeLocation&&window.__onNativeLocation(" + lat + "," + lon + "," + acc + "," + bearing + "," + speed + ");";
         webView.post(() -> webView.evaluateJavascript(js, null));
-    }
-
-
-    private void dispatchNativeHeading(float headingDeg) {
-        if (webView == null || Float.isNaN(headingDeg)) return;
-        pendingHeadingJs = headingDeg;
-        if (headingJsPending) return;
-        headingJsPending = true;
-        webView.post(this::flushNativeHeadingToJs);
-    }
-
-    private void flushNativeHeadingToJs() {
-        if (webView == null) {
-            headingJsPending = false;
-            pendingHeadingJs = Float.NaN;
-            return;
-        }
-        final float heading = pendingHeadingJs;
-        pendingHeadingJs = Float.NaN;
-        final String js = "window.__onNativeHeading&&window.__onNativeHeading(" + heading + ");";
-        webView.evaluateJavascript(js, value -> {
-            headingJsPending = false;
-            if (!Float.isNaN(pendingHeadingJs)) dispatchNativeHeading(pendingHeadingJs);
-        });
-    }
-
-    private void startHeadingSensor() {
-        if (!headingRequested || headingRegistered || sensorManager == null) return;
-        lastHeadingDeg = Float.NaN;
-        lastDispatchedHeading = Float.NaN;
-        lastHeadingDispatchMs = 0L;
-        if (headingSensor != null) {
-            headingRegistered = sensorManager.registerListener(headingListener, headingSensor, SensorManager.SENSOR_DELAY_GAME);
-        } else if (useAccelMagHeading) {
-            haveAccel = false;
-            haveMag = false;
-            boolean a = sensorManager.registerListener(headingListener, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-            boolean m = sensorManager.registerListener(headingListener, magnetometer, SensorManager.SENSOR_DELAY_GAME);
-            headingRegistered = a || m;
-        }
-    }
-
-    private void stopHeadingSensor() {
-        if (sensorManager != null && headingRegistered) sensorManager.unregisterListener(headingListener);
-        headingRegistered = false;
-        pendingHeadingJs = Float.NaN;
     }
 
     private boolean openExternalIfNeeded(Uri uri) {
@@ -384,19 +207,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override protected void onResume() {
-        super.onResume();
-        if (headingRequested) startHeadingSensor();
-    }
-
-    @Override protected void onPause() {
-        stopHeadingSensor();
-        super.onPause();
-    }
-
     @Override protected void onDestroy() {
         stopNativeGps();
-        stopHeadingSensor();
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
