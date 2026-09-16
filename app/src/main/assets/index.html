@@ -100,6 +100,12 @@
       </div>
       <div class="map-wrap" id="mapWrap">
         <canvas id="geoMap"></canvas>
+        <button class="track-toggle" id="trackToggleBtn" title="Iniciar ou parar rastreamento do percurso"><span>●</span><b>Rastrear percurso</b></button>
+        <div class="track-hud" id="trackHud" hidden>
+          <div class="track-rec" id="trackRecDot">●</div>
+          <div><small id="trackStatusText">RASTREAMENTO</small><strong id="trackDistance">0 m</strong><span id="trackInfo">0 pontos • 00:00</span></div>
+          <button id="trackExportBtn" hidden>Exportar SHP</button>
+        </div>
         <div class="zoom-control"><button id="zoomIn">+</button><button id="zoomOut">−</button></div>
         <div class="map-hint" id="mapHint">Árvores do plano • cores pela situação • arraste para mover</div>
         <div class="map-count" id="mapCount">0 árvores no mapa</div>

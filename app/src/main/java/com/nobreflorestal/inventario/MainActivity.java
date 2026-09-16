@@ -12,6 +12,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -20,6 +21,11 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.io.FileOutputStream;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER = 1201;
@@ -124,6 +130,30 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void stopLocationUpdates() {
             runOnUiThread(() -> stopNativeGps());
+        }
+        @JavascriptInterface public void shareBase64File(String fileName, String mimeType, String base64Data) {
+            runOnUiThread(() -> shareBase64FileNative(fileName, mimeType, base64Data));
+        }
+    }
+
+
+    private void shareBase64FileNative(String fileName, String mimeType, String base64Data) {
+        try {
+            String safe = fileName == null ? "NOBRE_RASTREIO_SHP.zip" : fileName.replaceAll("[^A-Za-z0-9._-]", "_");
+            File dir = new File(getCacheDir(), "exports");
+            if (!dir.exists()) dir.mkdirs();
+            File out = new File(dir, safe);
+            byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+            try (FileOutputStream fos = new FileOutputStream(out)) { fos.write(bytes); }
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", out);
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType(mimeType == null || mimeType.isEmpty() ? "application/zip" : mimeType);
+            send.putExtra(Intent.EXTRA_STREAM, uri);
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(send, "Enviar rastreamento SHP"));
+        } catch (Exception ex) {
+            final String msg = ex.getMessage() == null ? "Falha ao compartilhar o arquivo SHP." : ex.getMessage().replace("'", "");
+            if (webView != null) webView.evaluateJavascript("showToast('Erro ao compartilhar SHP: " + msg + "')", null);
         }
     }
 

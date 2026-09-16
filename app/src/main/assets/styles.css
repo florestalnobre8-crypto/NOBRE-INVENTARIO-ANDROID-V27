@@ -123,3 +123,14 @@
   .android-app .map-screen.active{height:calc(100dvh - 94px);min-height:620px;}
   .android-app .map-wrap{min-height:500px;}
 }
+
+
+/* Rastreamento de percurso GPS + exportação SHP */
+.track-toggle{position:absolute;left:10px;top:52px;z-index:12;border:0;border-radius:12px;background:rgba(5,55,35,.94);color:#fff;padding:9px 11px;display:flex;align-items:center;gap:7px;font-size:9px;font-weight:900;box-shadow:0 7px 20px rgba(0,0,0,.2)}
+.track-toggle span{font-size:13px;color:#4ee47c;line-height:1}.track-toggle.recording{background:#b51f32}.track-toggle.recording span{color:#fff}.track-toggle.has-track{background:rgba(7,61,39,.95)}
+.track-hud{position:absolute;left:10px;top:96px;z-index:12;width:min(380px,calc(100% - 92px));background:rgba(255,255,255,.96);border:1px solid rgba(9,64,39,.14);border-radius:14px;padding:9px 10px;display:grid;grid-template-columns:24px 1fr auto;gap:9px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.16);color:#143b28}
+.track-hud[hidden]{display:none}.track-rec{font-size:20px;line-height:1;color:#8c9b92}.track-hud.recording .track-rec{color:#e52e43;animation:trackPulse 1.2s infinite}.track-hud small{display:block;font-size:7px;letter-spacing:.1em;font-weight:900;color:#6f8377}.track-hud strong{display:inline-block;font-size:17px;margin-right:7px}.track-hud span{font-size:8px;color:#6b7c72}.track-hud button{border:0;border-radius:10px;background:#0a9650;color:#fff;padding:8px 9px;font-size:8px;font-weight:900;white-space:nowrap}
+@keyframes trackPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(max-width:700px){.track-toggle{left:8px;top:44px;padding:7px 9px;font-size:8px;border-radius:10px}.track-hud{left:8px;top:82px;width:min(310px,calc(100% - 58px));padding:7px 8px;grid-template-columns:18px 1fr auto;gap:6px;border-radius:11px}.track-rec{font-size:16px}.track-hud strong{font-size:14px}.track-hud span{font-size:7px}.track-hud button{padding:7px 7px;font-size:7px}.track-toggle b{font-size:8px}}
+
+
