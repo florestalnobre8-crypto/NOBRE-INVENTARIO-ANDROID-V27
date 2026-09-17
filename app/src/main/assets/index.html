@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#062d1d">
   <title>Inventário</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=33">
 </head>
 <body>
 <div class="app-shell">
@@ -102,12 +102,22 @@
       <div class="map-wrap" id="mapWrap">
         <canvas id="geoMap"></canvas>
         <div class="map-tools-dock" id="mapToolsDock" hidden>
-          <button class="dock-btn" id="dockCenterBtn" title="Minha localização">📍</button>
+          <button class="dock-btn" id="dockMarkerBtn" title="Adicionar marcador">⌖</button>
           <button class="dock-btn" id="dockLabelBtn" title="Mostrar/ocultar numeração">✎</button>
-          <button class="dock-btn" id="dockTrackBtn" title="Novo rastreio">〰</button>
+          <button class="dock-btn" id="dockTrackBtn" title="Rastrear percurso">〰</button>
           <button class="dock-btn" id="dockExportBtn" title="Exportar SHP">▤</button>
-          <button class="dock-btn" id="dockFitBtn" title="Enquadrar mapa">⬈</button>
+          <button class="dock-btn" id="dockFitBtn" title="Enquadrar mapa">↗</button>
+          <button class="dock-btn" id="dockCompassBtn" title="Mostrar/ocultar bússola">✥</button>
           <button class="dock-btn" id="dockTargetBtn" title="Centralizar localização">◎</button>
+        </div>
+        <div class="map-compass" id="mapCompass" hidden aria-label="Bússola">
+          <div class="compass-cardinal compass-n">N</div>
+          <div class="compass-cardinal compass-e">L</div>
+          <div class="compass-cardinal compass-s">S</div>
+          <div class="compass-cardinal compass-w">O</div>
+          <div class="compass-needle" id="compassNeedle"><span></span></div>
+          <div class="compass-center"></div>
+          <div class="compass-deg" id="compassDeg">0°</div>
         </div>
         <div class="map-count" id="mapCount">0 árvores no mapa</div>
         <div class="map-legend" id="mapLegend">
@@ -124,11 +134,17 @@
           <button id="stopNavBtn">Parar</button>
         </div>
       </div>
-      <div class="map-bottom-panel">
+      <div class="map-bottom-panel" id="mapBottomPanel">
         <button class="track-toggle bottom" id="trackToggleBtn" title="Iniciar ou parar rastreamento do percurso"><span>●</span><b>Novo rastreio</b></button>
+        <button class="track-collapse-btn" id="trackCollapseBtn" title="Recolher painel" aria-label="Recolher painel" hidden>⌄</button>
         <div class="track-hud bottom" id="trackHud" hidden>
           <div class="track-rec" id="trackRecDot">●</div>
-          <div><small id="trackStatusText">ÚLTIMO PERCURSO</small><strong id="trackDistance">0 m</strong><span id="trackInfo">0 pontos • 00:00</span></div>
+          <div class="track-main-info"><small id="trackStatusText">ÚLTIMO PERCURSO</small><strong id="trackDistance">0 m</strong><span id="trackInfo">0 pontos • 00:00</span></div>
+          <div class="track-extra" id="trackExtra">
+            <span><small>Direção</small><b id="trackHeading">—</b></span>
+            <span><small>Velocidade</small><b id="trackSpeed">0,0 km/h</b></span>
+            <span><small>Média</small><b id="trackAvgSpeed">0,0 km/h</b></span>
+          </div>
           <button id="trackExportBtn" hidden>Exportar SHP</button>
         </div>
       </div>
@@ -162,7 +178,7 @@
 
 <dialog id="filterDialog" class="modal-dialog">
   <form method="dialog" class="modal-card" onsubmit="return false">
-    <div class="modal-head"><div><span>Refinar resultados</span><h2>Filtros</h2></div><button class="close-modal" value="cancel">×</button></div>
+    <div class="modal-head"><div><span>Refinar resultados</span><h2>Filtros</h2></div><button class="close-modal" type="button" value="cancel">×</button></div>
     <label>UT<select id="utFilter"><option value="">Todas</option></select></label>
     <label>Faixa<select id="faixaFilter"><option value="">Todas</option></select></label>
     <label>Motosserrista<select id="motoFilter"><option value="">Todos</option></select></label>
@@ -173,12 +189,12 @@
 
 <dialog id="settingsDialog" class="modal-dialog">
   <form method="dialog" class="modal-card settings-card" onsubmit="return false">
-    <div class="modal-head"><div><span>Nobre Florestal</span><h2>Configurações</h2></div><button class="close-modal" value="cancel">×</button></div>
+    <div class="modal-head"><div><span>Nobre Florestal</span><h2>Configurações</h2></div><button class="close-modal" id="settingsCloseBtn" type="button" value="cancel" aria-label="Fechar configurações">×</button></div>
     <div class="setting-section"><h3>Sincronização PC ↔ celular</h3><p>Use a mesma URL e chave no computador e no celular. O celular guarda a última atualização para trabalhar offline.</p>
       <div class="settings-lock-row"><span class="settings-lock-badge">Bloqueado</span><button class="secondary-btn" id="settingsEditBtn">✎ Editar</button></div>
       <label>URL do Apps Script<input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
       <label>Chave de sincronização<input id="syncKey" placeholder="NOBRE-UPA13-2026"></label>
-      <button class="primary-btn full" id="saveSettingsBtn">Salvar configuração</button>
+      <button class="primary-btn full" id="saveSettingsBtn">Salvar alterações</button>
     </div>
     <div class="setting-section"><h3>Dados</h3>
       <div class="last-file-card"><span>✓</span><div><strong>Última planilha salva</strong><small id="lastWorkbookInfo">Carregando...</small></div></div>
@@ -207,7 +223,20 @@
       </div>
       <button class="primary-btn full" id="saveProjectMapBtn">Salvar projeto e enviar aos celulares</button>
     </div>
-    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da primeira sincronização, o inventário e o mapa do projeto ficam salvos no aparelho. A navegação usa GPS offline e mostra sua posição com ponto azul até o destino.</small></div></div></div>
+    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da primeira sincronização, o inventário e o mapa do projeto ficam salvos no aparelho. A navegação usa GPS offline e mostra sua posição com ponto azul até o destino.</small></div></div><div class="app-version-badge">Versão Android 3.3 • mapa Avenza • ATUALIZAÇÃO NOVA</div></div>
+  </form>
+</dialog>
+
+<dialog id="markerDialog" class="modal-dialog marker-dialog">
+  <form method="dialog" class="modal-card marker-card" onsubmit="return false">
+    <div class="modal-head"><div><span>Mapa</span><h2 id="markerDialogTitle">Novo marcador</h2></div><button class="close-modal marker-cancel" id="markerCancelX" type="button" aria-label="Fechar">×</button></div>
+    <label>Nome do marcador <small>(opcional)</small><input id="markerNameInput" maxlength="80" placeholder="Pode deixar em branco"></label>
+    <div class="marker-coord" id="markerCoordText"></div>
+    <div class="modal-actions marker-actions">
+      <button class="danger-btn" id="markerDeleteBtn" type="button" hidden>Excluir</button>
+      <button class="secondary-btn" id="markerCancelBtn" type="button">Cancelar</button>
+      <button class="primary-btn" id="markerSaveBtn" type="button">Salvar marcador</button>
+    </div>
   </form>
 </dialog>
 
@@ -225,6 +254,6 @@
 
 <div class="toast" id="toast" hidden></div>
 <script src="initial_data.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>
