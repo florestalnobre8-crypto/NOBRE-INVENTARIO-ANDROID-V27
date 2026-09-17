@@ -7,6 +7,10 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -37,8 +41,54 @@ public class MainActivity extends Activity {
     private GeolocationPermissions.Callback pendingGeoCallback;
 
     private LocationManager locationManager;
+    private SensorManager sensorManager;
+    private Sensor rotationSensor;
+    private Sensor accelerometerSensor;
+    private Sensor magnetometerSensor;
+    private final float[] lastAccel = new float[3];
+    private final float[] lastMag = new float[3];
+    private boolean hasAccel = false;
+    private boolean hasMag = false;
+    private long lastHeadingDispatch = 0L;
     private boolean nativeGpsContinuous = false;
     private boolean pendingNativeGps = false;
+
+    private final SensorEventListener headingListener = new SensorEventListener() {
+        @Override public void onSensorChanged(SensorEvent event) {
+            if (event == null || event.sensor == null) return;
+            final int type = event.sensor.getType();
+            long now = System.currentTimeMillis();
+            if (type == Sensor.TYPE_ROTATION_VECTOR) {
+                if (now - lastHeadingDispatch < 80L) return;
+                lastHeadingDispatch = now;
+                float[] rotation = new float[9];
+                float[] orientation = new float[3];
+                SensorManager.getRotationMatrixFromVector(rotation, event.values);
+                SensorManager.getOrientation(rotation, orientation);
+                double heading = Math.toDegrees(orientation[0]);
+                if (heading < 0) heading += 360.0;
+                dispatchNativeHeading(heading);
+                return;
+            }
+            if (type == Sensor.TYPE_ACCELEROMETER) {
+                System.arraycopy(event.values, 0, lastAccel, 0, Math.min(3, event.values.length));
+                hasAccel = true;
+            } else if (type == Sensor.TYPE_MAGNETIC_FIELD) {
+                System.arraycopy(event.values, 0, lastMag, 0, Math.min(3, event.values.length));
+                hasMag = true;
+            }
+            if (!hasAccel || !hasMag || now - lastHeadingDispatch < 100L) return;
+            float[] rotation = new float[9];
+            float[] orientation = new float[3];
+            if (!SensorManager.getRotationMatrix(rotation, null, lastAccel, lastMag)) return;
+            SensorManager.getOrientation(rotation, orientation);
+            double heading = Math.toDegrees(orientation[0]);
+            if (heading < 0) heading += 360.0;
+            lastHeadingDispatch = now;
+            dispatchNativeHeading(heading);
+        }
+        @Override public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    };
 
     private final LocationListener nativeLocationListener = new LocationListener() {
         @Override public void onLocationChanged(Location location) {
@@ -56,6 +106,18 @@ public class MainActivity extends Activity {
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            if (rotationSensor != null) {
+                sensorManager.registerListener(headingListener, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
+            } else {
+                accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                magnetometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+                if (accelerometerSensor != null) sensorManager.registerListener(headingListener, accelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
+                if (magnetometerSensor != null) sensorManager.registerListener(headingListener, magnetometerSensor, SensorManager.SENSOR_DELAY_GAME);
+            }
+        }
 
         webView = new WebView(this);
         setContentView(webView);
@@ -119,7 +181,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.loadUrl("file:///android_asset/index.html?android=1");
+        webView.loadUrl("file:///android_asset/index.html?android=1&build=32");
     }
 
     public class GpsBridge {
@@ -202,6 +264,12 @@ public class MainActivity extends Activity {
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
+    private void dispatchNativeHeading(double heading) {
+        if (webView == null || Double.isNaN(heading) || Double.isInfinite(heading)) return;
+        final String js = "window.__onNativeHeading&&window.__onNativeHeading(" + heading + ");";
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
     private boolean openExternalIfNeeded(Uri uri) {
         if (uri == null) return false;
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
@@ -240,6 +308,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         stopNativeGps();
+        if (sensorManager != null) sensorManager.unregisterListener(headingListener);
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();

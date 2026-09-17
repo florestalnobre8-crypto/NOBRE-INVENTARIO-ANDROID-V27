@@ -1,4 +1,4 @@
-name: GERAR APK INVENTARIO ANDROID V2.7
+name: GERAR APK NOBRE ANDROID V3.2
 
 on:
   workflow_dispatch:
@@ -39,8 +39,11 @@ jobs:
       - name: Gerar APK
         run: gradle assembleDebug --stacktrace
 
-      - name: Salvar APK
+      - name: Renomear APK V3.2
+        run: cp app/build/outputs/apk/debug/app-debug.apk NOBRE_FLORESTAL_V3_2.apk
+
+      - name: Salvar APK V3.2
         uses: actions/upload-artifact@v4
         with:
-          name: NOBRE-INVENTARIO-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: NOBRE-FLORESTAL-V3-2
+          path: NOBRE_FLORESTAL_V3_2.apk
