@@ -1,27 +1,35 @@
-NOBRE SERVIÇOS ANDROID — V4.6 GRADLE CORRIGIDO
+NOBRE SERVIÇOS ANDROID — V4.7 GITHUB CORRIGIDO
 
-CORREÇÃO DESTA VERSÃO
-O erro do GitHub Actions era:
-Plugin [id: 'com.android.application'] was not found
+O ERRO DA FOTO ERA:
+Plugin with id 'com.android.application' not found.
 
-Foi corrigido mudando o projeto para uma configuração Gradle mais robusta:
-- plugin Android declarado no build.gradle principal com versão 8.9.2;
-- app/build.gradle usa apply plugin;
-- Gradle 8.11.1;
-- Java 17;
-- compileSdk 35;
-- workflow atualizado.
+A V4.7 MUDA A ESTRUTURA PARA EVITAR ESSE PROBLEMA:
+- existe APENAS UM build.gradle;
+- ele fica na raiz do projeto;
+- o plugin Android já vem com a versão 8.9.2;
+- não existe mais app/build.gradle para confundir com o build.gradle principal;
+- o código Android agora fica em src/main;
+- funciona com o comando antigo:
+  gradle assembleDebug --stacktrace
+- também cria uma cópia do APK no caminho antigo app/build/... para compatibilidade.
 
-TODO O RESTANTE DA V4.5 FOI MANTIDO:
-- novo logo NOBRE SERVIÇOS;
-- barra inferior maior e protegida da barra do Android;
+IMPORTANTE NO GITHUB
+1. APAGUE os arquivos antigos do repositório OU crie um repositório novo.
+2. Envie o CONTEÚDO deste ZIP mantendo as pastas.
+3. Na raiz do GitHub devem aparecer:
+   build.gradle
+   settings.gradle
+   gradle.properties
+   src/
+   .github/
+4. NÃO deve existir app/build.gradle no código enviado.
+5. Rode Actions > NOBRE SERVICOS V4.7 - GERAR APK.
+
+A V4.7 mantém o app da V4.5:
+- logo NOBRE SERVIÇOS;
+- barra inferior maior;
 - mapas offline;
 - PDF direto no celular;
 - sincronização rápida;
-- instalação em vários celulares;
-- Produção e Evolução continuam fora do Android.
-
-NO GITHUB:
-Substitua os arquivos antigos do projeto pelos arquivos desta V4.6.
-É importante que build.gradle, settings.gradle, app/build.gradle e
-.github/workflows/build-apk.yml sejam os desta versão.
+- vários celulares;
+- Produção e Evolução fora do Android.
