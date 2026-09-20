@@ -1,4 +1,4 @@
-name: GERAR APK NOBRE V4.5 ESTAVEL MULTI CELULAR
+name: GERAR APK NOBRE V4.6 GRADLE CORRIGIDO
 
 on:
   workflow_dispatch:
@@ -23,27 +23,35 @@ jobs:
 
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: 12266719
-          packages: ''
 
       - name: Instalar Android SDK
         run: |
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Configurar Gradle
+      - name: Configurar Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      - name: Gerar APK V4.1
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Conferir estrutura
+        run: |
+          echo "===== build.gradle ====="
+          cat build.gradle
+          echo "===== app/build.gradle ====="
+          cat app/build.gradle
+          echo "===== settings.gradle ====="
+          cat settings.gradle
+          gradle --version
+
+      - name: Gerar APK
+        run: gradle clean :app:assembleDebug --stacktrace --no-daemon
 
       - name: Renomear APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk NOBRE_SERVICOS_V4_5.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk NOBRE_SERVICOS_V4_6.apk
 
-      - name: Salvar APK V4.1
+      - name: Salvar APK
         uses: actions/upload-artifact@v4
         with:
-          name: NOBRE-SERVICOS-V4-5
-          path: NOBRE_SERVICOS_V4_5.apk
+          name: NOBRE-SERVICOS-V4-6
+          path: NOBRE_SERVICOS_V4_6.apk

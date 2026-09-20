@@ -1,28 +1,27 @@
-NOBRE SERVIÇOS ANDROID — V4.5 ESTÁVEL / VÁRIOS CELULARES
+NOBRE SERVIÇOS ANDROID — V4.6 GRADLE CORRIGIDO
 
-BASE
-- Voltei para a base Android V4.1, anterior às alterações que deixaram a tela sem responder.
-- Mantive PDF direto no celular, escolha de mapas offline e navegação.
+CORREÇÃO DESTA VERSÃO
+O erro do GitHub Actions era:
+Plugin [id: 'com.android.application'] was not found
 
-CORREÇÕES
-- Botões e navegação usam novamente a estrutura estável.
-- Barra inferior maior e levantada para não ficar coberta pelos botões/gestos do celular.
-- Área segura também é respeitada pelo Android nativo.
-- Sincronização automática verifica a cada 2 segundos, sem consultas sobrepostas.
-- Ao voltar para o app ou reconectar à internet, verifica imediatamente.
-- URL e chave ficam automáticas; não precisa digitar no celular.
-- Novo logo NOBRE SERVIÇOS.
-- Produção e Evolução continuam fora do celular.
+Foi corrigido mudando o projeto para uma configuração Gradle mais robusta:
+- plugin Android declarado no build.gradle principal com versão 8.9.2;
+- app/build.gradle usa apply plugin;
+- Gradle 8.11.1;
+- Java 17;
+- compileSdk 35;
+- workflow atualizado.
 
-VÁRIOS CELULARES
-- O APK não tem bloqueio por aparelho.
-- Pode instalar em vários celulares.
-- Todos podem usar a mesma sincronização/projeto.
-- O intervalo de 2 segundos foi escolhido para ficar rápido sem sobrecarregar quando houver vários aparelhos.
+TODO O RESTANTE DA V4.5 FOI MANTIDO:
+- novo logo NOBRE SERVIÇOS;
+- barra inferior maior e protegida da barra do Android;
+- mapas offline;
+- PDF direto no celular;
+- sincronização rápida;
+- instalação em vários celulares;
+- Produção e Evolução continuam fora do Android.
 
-TESTE
-1. Instale por cima do app atual.
-2. Abra e toque em Início, Mapa, Árvores e Mais.
-3. Confirme que todos os botões respondem.
-4. Com internet, atualize o PC e espere cerca de 2 segundos.
-5. Teste o mapa offline.
+NO GITHUB:
+Substitua os arquivos antigos do projeto pelos arquivos desta V4.6.
+É importante que build.gradle, settings.gradle, app/build.gradle e
+.github/workflows/build-apk.yml sejam os desta versão.
