@@ -1,24 +1,15 @@
-NOBRE FLORESTAL ANDROID V3.3 - PACOTE LIMPO
+NOBRE SERVIÇOS ANDROID — V4.4
 
-Este pacote contém somente o projeto Android que o GitHub precisa compilar.
+BASE: V4.3 aprovada.
 
-CONFIRMAÇÃO DA VERSÃO:
-Abra Configurações no app. No final deve aparecer:
-"Versão Android 3.3 • mapa Avenza • ATUALIZAÇÃO NOVA"
-
-Principais correções incluídas:
-- Abre direto em Início.
-- X e Salvar alterações fecham Configurações.
-- Tocar em árvore apenas abre informações; não cria marcador.
-- Marcadores só são criados com a ferramenta de marcador ativada.
-- Nome do marcador é opcional.
-- Pode criar vários marcadores; segurar permite excluir com confirmação.
-- Barra lateral estilo Avenza, recolhível.
-- Bússola liga/desliga pela barra lateral.
-- Painel de rastreio pode ser recolhido.
-- Cursor GPS pequeno com seta de direção.
-- Build Android versionName 3.3 / versionCode 14.
-
-IMPORTANTE:
-Não use os arquivos app.js ou MainActivity.java que estiverem soltos na raiz do repositório antigo.
-O Android usa os arquivos dentro de app/src/main/...
+ALTERAÇÕES DESTA VERSÃO:
+- Colocado o novo logo escolhido: NOBRE SERVIÇOS + GPS/floresta.
+- Botões da barra inferior ficaram um pouco maiores.
+- Ícones da barra inferior ficaram maiores.
+- Barra inferior ganhou espaço de segurança para não ficar coberta
+  pelos botões/gestos do próprio celular.
+- Telas ganharam espaço extra embaixo para a barra não cobrir conteúdo.
+- No mapa, a altura útil foi ajustada para respeitar a barra inferior.
+- Sincronização rápida, PDF direto no celular, mapas offline e demais funções
+  da V4.3 foram mantidas.
+- Produção e Evolução continuam somente no PC.

@@ -230,3 +230,247 @@ body .map-wrap{padding-top:0}
 .android-app .map-tools-dock{right:12px;top:12px}
 .android-app .dock-btn{width:58px;height:58px;border-radius:18px;background:rgba(45,45,45,.78);color:#fff}
 .android-app .dock-btn.active{background:rgba(32,32,32,.92);color:#51ef9f;box-shadow:0 0 0 2px rgba(81,239,159,.28),0 10px 22px rgba(0,0,0,.22)}
+
+
+/* ===== V4.0 — SELETOR DE MAPAS OFFLINE NO CELULAR ===== */
+.mobile-map-picker-btn{
+  width:auto!important;
+  min-width:54px!important;
+  padding:0 8px!important;
+  font-size:8px!important;
+  font-weight:950!important;
+  letter-spacing:.04em!important;
+}
+.mobile-map-card{
+  width:min(94vw,620px)!important;
+  max-height:84vh!important;
+  overflow:auto!important;
+}
+.mobile-map-offline-note{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding:11px 12px;
+  margin:2px 0 12px;
+  border-radius:12px;
+  background:#eaf8ef;
+  border:1px solid #c8e9d4;
+  color:#17482e;
+}
+.mobile-map-offline-note b{font-size:12px}
+.mobile-map-offline-note span{font-size:10px;line-height:1.35;color:#577064}
+.mobile-map-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:12px;
+}
+.mobile-map-actions button{min-height:44px}
+.mobile-map-list{
+  display:grid;
+  gap:8px;
+}
+.mobile-map-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:11px;
+  border:1px solid #dbe7df;
+  border-radius:13px;
+  background:#fff;
+}
+.mobile-map-row.active{
+  border-color:#1bb65d;
+  background:#effaf3;
+}
+.mobile-map-row-info{
+  min-width:0;
+  flex:1;
+}
+.mobile-map-row-info strong{
+  display:block;
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.mobile-map-row-info small{
+  display:block;
+  margin-top:3px;
+  font-size:9px;
+  color:#73847b;
+}
+.mobile-map-row-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.mobile-map-row-actions button{
+  border:1px solid #cfe0d4;
+  background:#f8fbf9;
+  color:#16472d;
+  border-radius:9px;
+  padding:9px 10px;
+  font-size:9px;
+  font-weight:900;
+  min-height:38px;
+}
+.mobile-map-empty{
+  padding:22px 12px;
+  border:1px dashed #cadad0;
+  border-radius:12px;
+  text-align:center;
+  color:#708179;
+  font-size:11px;
+}
+.mobile-map-mode-badge{
+  display:inline-flex;
+  align-items:center;
+  max-width:62vw;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#eaf8ef;
+  color:#0a6b3a;
+  font-size:8px;
+  font-weight:950;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media(max-width:420px){
+  .mobile-map-actions{grid-template-columns:1fr}
+  .mobile-map-row{align-items:flex-start;flex-direction:column}
+  .mobile-map-row-actions{width:100%}
+  .mobile-map-row-actions button{flex:1}
+}
+
+
+/* ===== V4.1 — PDF DIRETO DO CELULAR ===== */
+#mobileAddPdfBtn{
+  grid-column:1/-1;
+  min-height:48px;
+  font-size:11px;
+}
+.mobile-map-local-tag{
+  display:inline-block;
+  margin-left:5px;
+  padding:2px 5px;
+  border-radius:999px;
+  background:#fff2c9;
+  color:#725300;
+  font-size:7px;
+  font-weight:950;
+  vertical-align:middle;
+}
+
+
+/* ===== V4.2 — SINCRONIZAÇÃO AUTOMÁTICA PELO PC ===== */
+.auto-sync-card-v42{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:6px 0 10px;
+  padding:13px;
+  border:1px solid #cbe8d5;
+  border-radius:14px;
+  background:#eef9f2;
+}
+.auto-sync-icon-v42{
+  display:grid;
+  place-items:center;
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  border-radius:12px;
+  background:#0aa957;
+  color:#fff;
+  font-size:22px;
+  font-weight:950;
+}
+.auto-sync-card-v42 strong{
+  display:block;
+  font-size:13px;
+  color:#123f29;
+}
+.auto-sync-card-v42 small{
+  display:block;
+  margin-top:3px;
+  line-height:1.35;
+  font-size:10px;
+  color:#62786c;
+}
+
+
+/* ===== V4.4 — BARRA INFERIOR MAIOR + PROTEÇÃO CONTRA BARRA DO CELULAR ===== */
+@media(max-width:700px){
+  /*
+    A barra fica um pouco acima da borda física e respeita a área segura.
+    Isso evita que gestos/botões do próprio Android cubram os botões do app.
+  */
+  .bottom-nav{
+    bottom:calc(10px + env(safe-area-inset-bottom, 0px))!important;
+    left:8px!important;
+    right:8px!important;
+    width:auto!important;
+    height:80px!important;
+    padding:7px max(8px,env(safe-area-inset-right,0px)) 7px max(8px,env(safe-area-inset-left,0px))!important;
+    border-radius:20px!important;
+    overflow:visible!important;
+    box-shadow:0 -7px 24px rgba(0,0,0,.30)!important;
+  }
+
+  .bottom-nav button{
+    min-width:0!important;
+    height:66px!important;
+    min-height:66px!important;
+    border-radius:13px!important;
+    gap:3px!important;
+    padding:4px 2px!important;
+    touch-action:manipulation;
+  }
+
+  .bottom-nav span{
+    font-size:24px!important;
+    line-height:1!important;
+  }
+
+  .bottom-nav b{
+    font-size:9px!important;
+    line-height:1.05!important;
+    margin-top:3px!important;
+    white-space:nowrap!important;
+  }
+
+  /* Reserva espaço para a barra maior em todas as telas comuns. */
+  .screen:not(.map-screen){
+    padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  /* No mapa, deixa a área útil terminar acima da barra inferior. */
+  .map-screen.active{
+    height:calc(100dvh - 166px - env(safe-area-inset-bottom,0px))!important;
+    padding-bottom:0!important;
+  }
+
+  /* Mensagens também ficam acima da nova barra. */
+  .toast{
+    bottom:calc(103px + env(safe-area-inset-bottom,0px))!important;
+  }
+}
+
+/* Celulares pequenos: mantém botão grande sem estourar a largura. */
+@media(max-width:390px){
+  .bottom-nav{
+    left:6px!important;
+    right:6px!important;
+    height:78px!important;
+  }
+  .bottom-nav button{
+    height:64px!important;
+    min-height:64px!important;
+  }
+  .bottom-nav span{font-size:22px!important}
+  .bottom-nav b{font-size:8.5px!important}
+}
