@@ -6,8 +6,7 @@
         <item name="android:navigationBarColor">#062E1E</item>
         <item name="android:statusBarColor">#063D28</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowSplashScreenBackground">#063D28</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#063D28</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

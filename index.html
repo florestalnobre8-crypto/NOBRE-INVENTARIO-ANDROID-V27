@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#062d1d">
   <title>Inventário</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=45">
 </head>
 <body>
 <div class="app-shell">
@@ -92,6 +92,7 @@
           <strong>Mapa georreferenciado</strong>
         </div>
         <div class="map-actions">
+          <button class="map-round mobile-map-picker-btn" id="mobileMapPickerBtn" title="Escolher mapa offline">MAPAS</button>
           <button class="map-round" id="filterMapBtn" title="Filtros">≡</button>
           <button class="map-round nav-location-btn" id="myLocationBtn" title="Minha localização / acompanhar GPS"><span class="nav-location-pointer">➤</span></button>
           <button class="map-round label-toggle active" id="labelsToggleBtn" title="Mostrar/ocultar numeração">Nº</button>
@@ -187,6 +188,26 @@
   </form>
 </dialog>
 
+
+<dialog id="mobileMapDialog" class="modal-dialog mobile-map-dialog">
+  <form method="dialog" class="modal-card mobile-map-card" onsubmit="return false">
+    <div class="modal-head">
+      <div><span>Uso offline</span><h2>Escolher mapa</h2></div>
+      <button class="close-modal" id="mobileMapCloseBtn" type="button" value="cancel" aria-label="Fechar">×</button>
+    </div>
+    <div class="mobile-map-offline-note">
+      <b>✓ Funciona sem internet</b>
+      <span>Escolha um mapa, todos juntos ou adicione um PDF direto do celular. Depois funciona offline.</span>
+    </div>
+    <div class="mobile-map-actions">
+      <button type="button" class="primary-btn" id="mobileAddPdfBtn">＋ Adicionar PDF do celular</button>
+      <button type="button" class="primary-btn" id="mobileUseAllMapsBtn">🗺 Usar todos os mapas</button>
+      <button type="button" class="secondary-btn" id="mobileRefreshMapsBtn">↻ Atualizar do PC</button>
+    </div>
+    <div id="mobileMapList" class="mobile-map-list"></div>
+  </form>
+</dialog>
+
 <dialog id="settingsDialog" class="modal-dialog">
   <form method="dialog" class="modal-card settings-card" onsubmit="return false">
     <div class="modal-head"><div><span>Nobre Florestal</span><h2>Configurações</h2></div><button class="close-modal" id="settingsCloseBtn" type="button" value="cancel" aria-label="Fechar configurações">×</button></div>
@@ -223,7 +244,7 @@
       </div>
       <button class="primary-btn full" id="saveProjectMapBtn">Salvar projeto e enviar aos celulares</button>
     </div>
-    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da primeira sincronização, o inventário e o mapa do projeto ficam salvos no aparelho. A navegação usa GPS offline e mostra sua posição com ponto azul até o destino.</small></div></div><div class="app-version-badge">Versão Android 3.2 • mapa Avenza</div></div>
+    <div class="setting-section"><h3>Modo offline</h3><div class="offline-info"><b>✓</b><div><strong>Mapa e dados locais</strong><small>Depois da sincronização, o inventário e TODOS os mapas do projeto ficam salvos no aparelho. Você pode escolher um mapa ou usar todos juntos sem internet. A navegação usa GPS offline e mostra sua posição com ponto azul até o destino.</small></div></div><div class="app-version-badge">Versão Android 4.5 • estável • vários celulares • sync rápida</div></div>
   </form>
 </dialog>
 
@@ -254,6 +275,6 @@
 
 <div class="toast" id="toast" hidden></div>
 <script src="initial_data.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=45"></script>
 </body>
 </html>

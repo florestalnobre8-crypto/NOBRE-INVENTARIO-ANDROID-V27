@@ -5,6 +5,11 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.pdf.PdfRenderer;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
@@ -16,7 +21,11 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
 import android.util.Base64;
+import android.view.Window;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -30,10 +39,22 @@ import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.InflaterInputStream;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER = 1201;
     private static final int LOCATION_PERMISSION = 1202;
+    private static final int PDF_MAP_PICKER = 1203;
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -105,6 +126,15 @@ public class MainActivity extends Activity {
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+            Window w = getWindow();
+            w.setNavigationBarColor(Color.rgb(6,46,30));
+            w.setStatusBarColor(Color.rgb(6,61,40));
+            if (Build.VERSION.SDK_INT >= 30) {
+                w.setDecorFitsSystemWindows(true);
+            }
+        } catch (Exception ignored) {}
+
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
@@ -159,7 +189,8 @@ public class MainActivity extends Activity {
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
                         "application/vnd.ms-excel",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        "text/csv"
+                        "text/csv",
+                        "application/pdf"
                 });
                 try {
                     startActivityForResult(intent, FILE_CHOOSER);
@@ -181,7 +212,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.loadUrl("file:///android_asset/index.html?android=1&build=32");
+        webView.loadUrl("file:///android_asset/index.html?android=1&build=45");
     }
 
     public class GpsBridge {
@@ -197,8 +228,273 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void shareBase64File(String fileName, String mimeType, String base64Data) {
             runOnUiThread(() -> shareBase64FileNative(fileName, mimeType, base64Data));
         }
+        @JavascriptInterface public void pickPdfMap() {
+            runOnUiThread(() -> openPdfMapPicker());
+        }
     }
 
+
+
+    private void openPdfMapPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/pdf");
+            startActivityForResult(intent, PDF_MAP_PICKER);
+        } catch (Exception ex) {
+            if (webView != null) webView.evaluateJavascript(
+                    "showToast('Não foi possível abrir os arquivos PDF.')", null);
+        }
+    }
+
+    private String getDisplayName(Uri uri) {
+        String name = "MAPA.pdf";
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME},
+                    null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) name = cursor.getString(idx);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return name == null || name.trim().isEmpty() ? "MAPA.pdf" : name;
+    }
+
+    private byte[] readUriBytes(Uri uri) throws Exception {
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (in == null) throw new Exception("Arquivo PDF não disponível.");
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            return out.toByteArray();
+        }
+    }
+
+    private static class GeoHit {
+        double north, south, west, east;
+        double[] bbox;
+        GeoHit(double n, double s, double w, double e, double[] bb) {
+            north=n; south=s; west=w; east=e; bbox=bb;
+        }
+        JSONObject toJson() throws Exception {
+            JSONObject o = new JSONObject();
+            o.put("north", north);
+            o.put("south", south);
+            o.put("west", west);
+            o.put("east", east);
+            return o;
+        }
+    }
+
+    private List<Double> numbersFrom(String text) {
+        List<Double> out = new ArrayList<>();
+        Matcher m = Pattern.compile("[-+]?\\d*\\.?\\d+(?:[eE][-+]?\\d+)?").matcher(text == null ? "" : text);
+        while (m.find()) {
+            try { out.add(Double.parseDouble(m.group())); } catch (Exception ignored) {}
+        }
+        return out;
+    }
+
+    private GeoHit geoCandidate(List<Double> nums, boolean swap, double[] bbox) {
+        if (nums == null || nums.size() < 8) return null;
+        List<Double> lats = new ArrayList<>();
+        List<Double> lons = new ArrayList<>();
+        for (int i=0; i+1<nums.size(); i+=2) {
+            double a=nums.get(i), b=nums.get(i+1);
+            double lat=swap?b:a, lon=swap?a:b;
+            if (Math.abs(lat)>90 || Math.abs(lon)>180) return null;
+            lats.add(lat); lons.add(lon);
+        }
+        if (lats.size()<4) return null;
+        double north=-90, south=90, west=180, east=-180;
+        for (double v:lats) { north=Math.max(north,v); south=Math.min(south,v); }
+        for (double v:lons) { west=Math.min(west,v); east=Math.max(east,v); }
+        if (!(north>south && east>west)) return null;
+        if ((north-south)>30 || (east-west)>60) return null;
+        return new GeoHit(north,south,west,east,bbox);
+    }
+
+    private double[] findLastBBox(String context) {
+        Matcher bm = Pattern.compile("/BBox\\s*\\[([^\\]]+)\\]", Pattern.DOTALL).matcher(context == null ? "" : context);
+        double[] last = null;
+        while (bm.find()) {
+            List<Double> b = numbersFrom(bm.group(1));
+            if (b.size() >= 4) last = new double[]{b.get(0),b.get(1),b.get(2),b.get(3)};
+        }
+        return last;
+    }
+
+    private List<GeoHit> parseGeoText(String text) {
+        List<GeoHit> hits = new ArrayList<>();
+        if (text == null || !text.contains("/GPTS")) return hits;
+        Matcher gm = Pattern.compile("/GPTS\\s*\\[([\\s\\S]*?)\\]").matcher(text);
+        while (gm.find() && hits.size() < 12) {
+            List<Double> nums = numbersFrom(gm.group(1));
+            if (nums.size() < 8) continue;
+            int s = Math.max(0, gm.start()-2500);
+            int e = Math.min(text.length(), gm.end()+1200);
+            double[] bbox = findLastBBox(text.substring(s,e));
+            GeoHit a = geoCandidate(nums,false,bbox);
+            GeoHit b = geoCandidate(nums,true,bbox);
+            if (a != null) hits.add(a);
+            if (b != null) hits.add(b);
+        }
+        return hits;
+    }
+
+    private List<GeoHit> extractGeoHits(byte[] bytes) {
+        List<GeoHit> hits = new ArrayList<>();
+        try {
+            String raw = new String(bytes, StandardCharsets.ISO_8859_1);
+            hits.addAll(parseGeoText(raw));
+            if (!hits.isEmpty()) return hits;
+
+            int pos=0, checked=0;
+            while (checked < 350) {
+                int si = raw.indexOf("stream", pos);
+                if (si < 0) break;
+                int ei = raw.indexOf("endstream", si+6);
+                if (ei < 0) break;
+                int ds = Math.max(0, si-900);
+                String dict = raw.substring(ds, si);
+                pos = ei + 9;
+                checked++;
+                if (!dict.contains("FlateDecode")) continue;
+
+                int dataStart = si + 6;
+                if (dataStart < bytes.length && bytes[dataStart] == 13) dataStart++;
+                if (dataStart < bytes.length && bytes[dataStart] == 10) dataStart++;
+                int dataEnd = ei;
+                while (dataEnd > dataStart && (bytes[dataEnd-1] == 10 || bytes[dataEnd-1] == 13)) dataEnd--;
+
+                try (InflaterInputStream zin = new InflaterInputStream(
+                        new ByteArrayInputStream(bytes, dataStart, Math.max(0,dataEnd-dataStart)));
+                     ByteArrayOutputStream zout = new ByteArrayOutputStream()) {
+                    byte[] buf = new byte[32768];
+                    int n;
+                    while ((n = zin.read(buf)) > 0 && zout.size() < 8_000_000) zout.write(buf,0,n);
+                    String txt = zout.toString(StandardCharsets.ISO_8859_1.name());
+                    List<GeoHit> found = parseGeoText(txt);
+                    if (!found.isEmpty()) {
+                        hits.addAll(found);
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return hits;
+    }
+
+    private File renderPdfMapToFile(Uri uri, GeoHit cropHint) throws Exception {
+        ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+        if (pfd == null) throw new Exception("Não consegui abrir o PDF.");
+
+        PdfRenderer renderer = new PdfRenderer(pfd);
+        if (renderer.getPageCount() < 1) {
+            renderer.close(); pfd.close();
+            throw new Exception("PDF sem páginas.");
+        }
+
+        PdfRenderer.Page page = renderer.openPage(0);
+        int pw = Math.max(1, page.getWidth());
+        int ph = Math.max(1, page.getHeight());
+
+        double scale = Math.min(4.0, 3000.0 / Math.max(pw, ph));
+        scale = Math.max(1.5, scale);
+        int w = Math.max(1, (int)Math.round(pw*scale));
+        int h = Math.max(1, (int)Math.round(ph*scale));
+
+        long pixels = (long)w*(long)h;
+        if (pixels > 8_000_000L) {
+            double f = Math.sqrt(8_000_000.0 / pixels);
+            w = Math.max(1, (int)Math.round(w*f));
+            h = Math.max(1, (int)Math.round(h*f));
+            scale = (double)w / pw;
+        }
+
+        Bitmap bitmap = Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(Color.WHITE);
+        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+
+        Bitmap output = bitmap;
+        if (cropHint != null && cropHint.bbox != null && cropHint.bbox.length >= 4) {
+            try {
+                double x0=Math.min(cropHint.bbox[0],cropHint.bbox[2]);
+                double x1=Math.max(cropHint.bbox[0],cropHint.bbox[2]);
+                double y0=Math.min(cropHint.bbox[1],cropHint.bbox[3]);
+                double y1=Math.max(cropHint.bbox[1],cropHint.bbox[3]);
+
+                int left=(int)Math.floor(x0*scale);
+                int right=(int)Math.ceil(x1*scale);
+                int top=(int)Math.floor((ph-y1)*scale);
+                int bottom=(int)Math.ceil((ph-y0)*scale);
+
+                left=Math.max(0,Math.min(w-1,left));
+                right=Math.max(left+1,Math.min(w,right));
+                top=Math.max(0,Math.min(h-1,top));
+                bottom=Math.max(top+1,Math.min(h,bottom));
+
+                if (right-left > 200 && bottom-top > 200) {
+                    output = Bitmap.createBitmap(bitmap,left,top,right-left,bottom-top);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        File mapsDir = new File(getFilesDir(), "offline_maps");
+        if (!mapsDir.exists()) mapsDir.mkdirs();
+        File out = new File(mapsDir, "map_pdf_" + System.currentTimeMillis() + ".jpg");
+        try (FileOutputStream fos = new FileOutputStream(out)) {
+            output.compress(Bitmap.CompressFormat.JPEG, 92, fos);
+        }
+
+        if (output != bitmap) output.recycle();
+        bitmap.recycle();
+        page.close();
+        renderer.close();
+        pfd.close();
+        return out;
+    }
+
+    private void importPdfMapNative(Uri uri) {
+        new Thread(() -> {
+            try {
+                final String name = getDisplayName(uri);
+                byte[] raw = readUriBytes(uri);
+                List<GeoHit> hits = extractGeoHits(raw);
+                GeoHit cropHint = hits.isEmpty() ? null : hits.get(0);
+                File imageFile = renderPdfMapToFile(uri, cropHint);
+
+                JSONObject payload = new JSONObject();
+                payload.put("name", name);
+                payload.put("src", Uri.fromFile(imageFile).toString());
+                payload.put("georeferenced", !hits.isEmpty());
+                JSONArray arr = new JSONArray();
+                for (GeoHit h : hits) arr.put(h.toJson());
+                payload.put("boundsCandidates", arr);
+
+                final String arg = JSONObject.quote(payload.toString());
+                runOnUiThread(() -> {
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                                "window.onAndroidPdfMapReadyV41(" + arg + ")", null);
+                    }
+                });
+            } catch (Exception ex) {
+                final String msg = ex.getMessage() == null ? "Falha ao importar PDF." :
+                        ex.getMessage().replace("\\","").replace("'","");
+                runOnUiThread(() -> {
+                    if (webView != null) webView.evaluateJavascript(
+                            "showToast('Não consegui importar o PDF: " + msg + "')", null);
+                });
+            }
+        }).start();
+    }
 
     private void shareBase64FileNative(String fileName, String mimeType, String base64Data) {
         try {
@@ -285,10 +581,33 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PDF_MAP_PICKER) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                Uri uri = data.getData();
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (Exception ignored) {}
+                if (webView != null) webView.evaluateJavascript(
+                        "showToast('Lendo PDF do mapa...')", null);
+                importPdfMapNative(uri);
+            }
+            return;
+        }
+
         if (requestCode == FILE_CHOOSER && filePathCallback != null) {
             Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             filePathCallback.onReceiveValue(results);
             filePathCallback = null;
+        }
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.postDelayed(() -> webView.evaluateJavascript(
+                    "if(window.fastRefreshV45){window.fastRefreshV45(false)}", null), 250);
         }
     }
 

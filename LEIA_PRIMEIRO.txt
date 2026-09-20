@@ -1,15 +1,28 @@
-NOBRE SERVIÇOS ANDROID — V4.4
+NOBRE SERVIÇOS ANDROID — V4.5 ESTÁVEL / VÁRIOS CELULARES
 
-BASE: V4.3 aprovada.
+BASE
+- Voltei para a base Android V4.1, anterior às alterações que deixaram a tela sem responder.
+- Mantive PDF direto no celular, escolha de mapas offline e navegação.
 
-ALTERAÇÕES DESTA VERSÃO:
-- Colocado o novo logo escolhido: NOBRE SERVIÇOS + GPS/floresta.
-- Botões da barra inferior ficaram um pouco maiores.
-- Ícones da barra inferior ficaram maiores.
-- Barra inferior ganhou espaço de segurança para não ficar coberta
-  pelos botões/gestos do próprio celular.
-- Telas ganharam espaço extra embaixo para a barra não cobrir conteúdo.
-- No mapa, a altura útil foi ajustada para respeitar a barra inferior.
-- Sincronização rápida, PDF direto no celular, mapas offline e demais funções
-  da V4.3 foram mantidas.
-- Produção e Evolução continuam somente no PC.
+CORREÇÕES
+- Botões e navegação usam novamente a estrutura estável.
+- Barra inferior maior e levantada para não ficar coberta pelos botões/gestos do celular.
+- Área segura também é respeitada pelo Android nativo.
+- Sincronização automática verifica a cada 2 segundos, sem consultas sobrepostas.
+- Ao voltar para o app ou reconectar à internet, verifica imediatamente.
+- URL e chave ficam automáticas; não precisa digitar no celular.
+- Novo logo NOBRE SERVIÇOS.
+- Produção e Evolução continuam fora do celular.
+
+VÁRIOS CELULARES
+- O APK não tem bloqueio por aparelho.
+- Pode instalar em vários celulares.
+- Todos podem usar a mesma sincronização/projeto.
+- O intervalo de 2 segundos foi escolhido para ficar rápido sem sobrecarregar quando houver vários aparelhos.
+
+TESTE
+1. Instale por cima do app atual.
+2. Abra e toque em Início, Mapa, Árvores e Mais.
+3. Confirme que todos os botões respondem.
+4. Com internet, atualize o PC e espere cerca de 2 segundos.
+5. Teste o mapa offline.

@@ -1,4 +1,4 @@
-name: GERAR APK NOBRE ANDROID V3.2
+name: GERAR APK NOBRE V4.5 ESTAVEL MULTI CELULAR
 
 on:
   workflow_dispatch:
@@ -36,14 +36,14 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Gerar APK
-        run: gradle assembleDebug --stacktrace
+      - name: Gerar APK V4.1
+        run: gradle :app:assembleDebug --stacktrace
 
-      - name: Renomear APK V3.2
-        run: cp app/build/outputs/apk/debug/app-debug.apk NOBRE_FLORESTAL_V3_2.apk
+      - name: Renomear APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk NOBRE_SERVICOS_V4_5.apk
 
-      - name: Salvar APK V3.2
+      - name: Salvar APK V4.1
         uses: actions/upload-artifact@v4
         with:
-          name: NOBRE-FLORESTAL-V3-2
-          path: NOBRE_FLORESTAL_V3_2.apk
+          name: NOBRE-SERVICOS-V4-5
+          path: NOBRE_SERVICOS_V4_5.apk
